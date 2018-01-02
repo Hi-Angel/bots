@@ -85,14 +85,14 @@ float oppositeLen(float aLen, float bLen, int abAngle) {
 // or right? To get the optimum you'd need to use optimization techniques instead,
 // but I don't know them offhand, and for now I consider bisection good enough. I may
 // possibly change my mind though.
-int bisectSpeed(int carDist, int carAngle) {
+int bisectSpeed(int carDist, int carAngle, int speed) {
     // terms: "adjacent len" is a "speed" from a trigonometric POV
     int bottom = 0, top = 100;
-    float bottomLen = oppositeLen(carDist, bottom, carAngle),
-        topLen = oppositeLen(carDist, top, carAngle);
+    float bottomLen = oppositeLen(carDist, bottom+speed, carAngle),
+        topLen = oppositeLen(carDist, top+speed, carAngle);
     for (;;) {
         int nextAdjLen = bottom + (top - bottom) / 2;
-        float oppLen = oppositeLen(carDist, nextAdjLen, carAngle);
+        float oppLen = oppositeLen(carDist, nextAdjLen+speed, carAngle);
         if (nextAdjLen <= bottom+1 || nextAdjLen >= top-1) { // technically, it can be e.g.either bottom or bottom+1
             if (bottomLen < topLen)
                 return (bottomLen < oppLen)? bottom : nextAdjLen;
@@ -114,6 +114,13 @@ bool circlesIntersect(Point a, Point b, int radius) {
     return abs(a.x - b.x) <= radius && abs(a.y - b.y) <= radius;
 }
 
+// poor man's speed, it doesn't count inertia
+int currSpeed(Point prev, Point curr) {
+    int xDist = abs(prev.x - curr.x),
+        yDist = abs(prev.y - curr.y);
+    return sqrtf(xDist*xDist + yDist*yDist);
+}
+
 /**
  * Auto-generated code below aims at helping you parse
  * the standard input according to the problem statement.
@@ -121,7 +128,7 @@ bool circlesIntersect(Point a, Point b, int radius) {
 int main() {
     vector<pair<Point,int>> chks;
     bool collected = false, hasBoost = true;
-    Point prevRecordedPoint = {0, 0}, prevPoint = {0, 0};
+    Point prevRecordedPoint = {0, 0}, prevPos = {0, 0};
     int prevDistance = 0;
     while (1) {
         Point currPos, chkPoint;
@@ -133,7 +140,8 @@ int main() {
         cin >> opponentX >> opponentY;
 
         int speedI = bisectSpeed(nextCheckpointDist+chkPointRadius,
-                                 nextCheckpointAngle);
+                                 nextCheckpointAngle,
+                                 currSpeed(prevPos, currPos));
         string tmp = " " + to_string(speedI);
         const char* speed = tmp.c_str();
 
@@ -169,7 +177,8 @@ int main() {
              << dst.y << speed << endl;
 
         prevDistance = nextCheckpointDist;
-        prevPoint = chkPoint;
+        prevPos = chkPoint;
+        cerr << "speed: " << currSpeed(prevPos, currPos) << endl;
     }
 }
 
