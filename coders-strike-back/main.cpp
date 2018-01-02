@@ -132,8 +132,9 @@ int main() {
         int opponentY;
         cin >> opponentX >> opponentY;
 
-        string tmp = " " + to_string(bisectSpeed(nextCheckpointDist+chkPointRadius,
-                                                 nextCheckpointAngle));
+        int speedI = bisectSpeed(nextCheckpointDist+chkPointRadius,
+                                 nextCheckpointAngle);
+        string tmp = " " + to_string(speedI);
         const char* speed = tmp.c_str();
 
         if (!collected) {
@@ -150,7 +151,8 @@ int main() {
                 }
             }
         } else if (hasBoost && (nextCheckpointAngle >= -1
-                                && nextCheckpointAngle <= 1)) {
+                                && nextCheckpointAngle <= 1
+                                && speedI == 100)) {
             assert(chks.size() > 1);
             pair<Point,int> farthest = chks[0];
             for (uint i = 1; i < chks.size(); ++i)
