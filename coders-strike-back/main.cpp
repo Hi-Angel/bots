@@ -110,8 +110,7 @@ int bisectSpeed(int carDist, int carAngle) {
  * the standard input according to the problem statement.
  **/
 int main() {
-    vector<pair<Point,int>> chks;
-    bool collected = false, hasBoost = true, forceSpeed = false;
+    bool hasBoost = true;
     Point prevRecordedPoint = {0, 0}, prevPoint = {0, 0};
     int prevDistance = 0;
     while (1) {
@@ -126,47 +125,11 @@ int main() {
         string tmp = " " + to_string(bisectSpeed(nextCheckpointDist, nextCheckpointAngle));
         const char* speed = tmp.c_str();
 
-        if (!collected && prevRecordedPoint != chkPoint) {
-            for (uint i = 0; i < chks.size(); ++i)
-                if (chks[i].first == chkPoint) {
-                    prevRecordedPoint = chkPoint;
-                    collected = true;
-                    break;
-                }
-            if (!collected) {
-                chks.push_back({chkPoint, nextCheckpointDist});
-                prevRecordedPoint = chkPoint;
-            }
-        }
-        if (collected && hasBoost && nextCheckpointAngle == 0) {
-            assert(chks.size() > 1);
-            pair<Point,int> farthest = chks[0];
-            for (uint i = 1; i < chks.size(); ++i)
-                if (farthest.second < chks[i].second)
-                    farthest = chks[i];
-            cerr << "furthest check is " << farthest.first << "and point is " << chkPoint << endl;
-            if (farthest.first == chkPoint) {
-                speed = " BOOST";
-                hasBoost = false;
-            }
-        }
-        if (collected) {
-            cerr << "nextCheckpointAngle: " << nextCheckpointAngle << " "
-                 << "hasBoost: " << hasBoost << endl;
+        if (hasBoost && nextCheckpointAngle == 0 && nextCheckpointDist >= 1200) {
+            speed = " BOOST";
+            hasBoost = false;
         }
         const Point dst = edgeOfChk(currPos, chkPoint, nextCheckpointDist);
-
-        /////// handler if we're stuck
-        if (!forceSpeed && prevDistance == nextCheckpointDist) {
-            forceSpeed = true;
-            speed = " 100";
-        } else if (forceSpeed) {
-            if (prevPoint != chkPoint)
-                forceSpeed = false;
-            else
-                speed = " 100";
-        }
-        /////////////////////
 
         cout << dst.x << " "
              << dst.y << speed << endl;
