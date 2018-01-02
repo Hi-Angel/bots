@@ -5,11 +5,12 @@
 #include <cassert>
 #include <utility>
 #include <cmath>
+#include <stdlib.h>
 
 using namespace std;
 using uint = unsigned;
 
-const unsigned chkPointRadius = 600;
+const unsigned short chkPointRadius = 600;
 
 struct Point {
     int x, y;
@@ -109,13 +110,18 @@ int bisectSpeed(int carDist, int carAngle) {
     }
 }
 
+bool circlesIntersect(Point a, Point b, int radius) {
+    return abs(a.x - b.x) <= radius && abs(a.y - b.y) <= radius;
+}
+
 /**
  * Auto-generated code below aims at helping you parse
  * the standard input according to the problem statement.
  **/
 int main() {
-    bool hasBoost = true;
-    Point prevPoint = {0, 0};
+    vector<pair<Point,int>> chks;
+    bool collected = false, hasBoost = true;
+    Point prevRecordedPoint = {0, 0}, prevPoint = {0, 0};
     int prevDistance = 0;
     while (1) {
         Point currPos, chkPoint;
@@ -130,9 +136,30 @@ int main() {
                                                  nextCheckpointAngle));
         const char* speed = tmp.c_str();
 
-        if (hasBoost && nextCheckpointAngle == 0 && nextCheckpointDist >= 2400) {
-            speed = " BOOST";
-            hasBoost = false;
+        if (!collected) {
+            if (prevRecordedPoint != chkPoint) {
+                for (uint i = 0; i < chks.size(); ++i)
+                    if (chks[i].first == chkPoint) {
+                        prevRecordedPoint = chkPoint;
+                        collected = true;
+                        break;
+                    }
+                if (!collected) {
+                    chks.push_back({chkPoint, nextCheckpointDist});
+                    prevRecordedPoint = chkPoint;
+                }
+            }
+        } else if (hasBoost && (nextCheckpointAngle >= -1
+                                && nextCheckpointAngle <= 1)) {
+            assert(chks.size() > 1);
+            pair<Point,int> farthest = chks[0];
+            for (uint i = 1; i < chks.size(); ++i)
+                if (farthest.second < chks[i].second)
+                    farthest = chks[i];
+            if (circlesIntersect(farthest.first, chkPoint, chkPointRadius)) {
+                speed = " BOOST";
+                hasBoost = false;
+            }
         }
 
         const Point dst = farEdgeOfChk(currPos, chkPoint, nextCheckpointDist);
@@ -143,3 +170,5 @@ int main() {
         prevPoint = chkPoint;
     }
 }
+
+// todo: distance seems to be 400 per 100; also inertia looks undocumented.
