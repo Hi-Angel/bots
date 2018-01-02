@@ -121,6 +121,18 @@ int currSpeed(Point prev, Point curr) {
     return sqrtf(xDist*xDist + yDist*yDist);
 }
 
+Point targetInChk(Point prevPos, Point pos, Point chkpoint, int chkDst) {
+    int farEdge = farEdgeOfChk(pos,chkpoint, chkDst);
+    // todo: if angle between prevPos and pos too big, correct the target
+}
+
+// Point target(Point opponent, Point chk) {
+//     // if the opponent directly before us, target them
+//     int oppAngle = todo
+//     if (abs(oppAngle) >= 4)
+//         return chk;
+// }
+
 /**
  * Auto-generated code below aims at helping you parse
  * the standard input according to the problem statement.
@@ -178,7 +190,6 @@ int main() {
 
         prevDistance = nextCheckpointDist;
         prevPos = chkPoint;
-        cerr << "speed: " << currSpeed(prevPos, currPos) << endl;
     }
 }
 
