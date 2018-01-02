@@ -9,6 +9,8 @@
 using namespace std;
 using uint = unsigned;
 
+const unsigned chkPointRadius = 600;
+
 struct Point {
     int x, y;
     bool operator==(const Point& p) const {
@@ -47,7 +49,7 @@ struct MaybeStats {
 //     adj = currChkY - carY
 //     sin = opp/hyp
 //     cos = adj/hyp
-//     newHyp = hyp - 600
+//     newHyp = hyp - chkPointRadius
 //     newOpp = newHyp * sin
 //     newAdj = newHyp * cos
 //     edgeChkX = carX + newOpp
@@ -60,8 +62,8 @@ Point farEdgeOfChk(Point car, Point chkpoint, int chkDistance) {
         adjacent = chkpoint.y - car.y;
     float sin = opposite / (float)hyp,
         cos = adjacent / (float)hyp;
-    assert(hyp >= 600);
-    int newHyp = hyp + 600,
+    assert(hyp >= chkPointRadius);
+    int newHyp = hyp + chkPointRadius,
         newOpp = newHyp * sin,
         newAdj = newHyp * cos,
         edgeChkX = car.x + newOpp,
@@ -124,7 +126,8 @@ int main() {
         int opponentY;
         cin >> opponentX >> opponentY;
 
-        string tmp = " " + to_string(bisectSpeed(nextCheckpointDist, nextCheckpointAngle));
+        string tmp = " " + to_string(bisectSpeed(nextCheckpointDist+chkPointRadius,
+                                                 nextCheckpointAngle));
         const char* speed = tmp.c_str();
 
         if (hasBoost && nextCheckpointAngle == 0 && nextCheckpointDist >= 2400) {
