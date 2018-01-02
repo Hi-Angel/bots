@@ -54,14 +54,14 @@ struct MaybeStats {
 //     edgeChkY = carY + newAdj
 // return (edgeChkX, edgeChkY)
 
-Point edgeOfChk(Point car, Point chkpoint, int chkDistance) {
+Point farEdgeOfChk(Point car, Point chkpoint, int chkDistance) {
     int hyp = chkDistance,
         opposite = chkpoint.x - car.x,
         adjacent = chkpoint.y - car.y;
     float sin = opposite / (float)hyp,
         cos = adjacent / (float)hyp;
     assert(hyp >= 600);
-    int newHyp = hyp - 600,
+    int newHyp = hyp + 600,
         newOpp = newHyp * sin,
         newAdj = newHyp * cos,
         edgeChkX = car.x + newOpp,
@@ -90,10 +90,12 @@ int bisectSpeed(int carDist, int carAngle) {
     for (;;) {
         int nextAdjLen = bottom + (top - bottom) / 2;
         float oppLen = oppositeLen(carDist, nextAdjLen, carAngle);
-        if (nextAdjLen <= bottom+1) // technically, it can be either bottom or bottom+1
-            return (bottomLen < oppLen)? bottom : nextAdjLen;
-        else if (nextAdjLen >= top-1) // technically, it can be either top or top-1
-            return (topLen < oppLen)? top : nextAdjLen;
+        if (nextAdjLen <= bottom+1 || nextAdjLen >= top-1) { // technically, it can be e.g.either bottom or bottom+1
+            if (bottomLen < topLen)
+                return (bottomLen < oppLen)? bottom : nextAdjLen;
+            else
+                return (topLen < oppLen)? top : nextAdjLen;
+        }
 
         if (bottomLen <= topLen) { // at (5…x…6) or (5…x…5) blindly pick left half
             top = nextAdjLen;
@@ -111,7 +113,7 @@ int bisectSpeed(int carDist, int carAngle) {
  **/
 int main() {
     bool hasBoost = true;
-    Point prevRecordedPoint = {0, 0}, prevPoint = {0, 0};
+    Point prevPoint = {0, 0};
     int prevDistance = 0;
     while (1) {
         Point currPos, chkPoint;
@@ -125,17 +127,16 @@ int main() {
         string tmp = " " + to_string(bisectSpeed(nextCheckpointDist, nextCheckpointAngle));
         const char* speed = tmp.c_str();
 
-        if (hasBoost && nextCheckpointAngle == 0 && nextCheckpointDist >= 1200) {
+        if (hasBoost && nextCheckpointAngle == 0 && nextCheckpointDist >= 2400) {
             speed = " BOOST";
             hasBoost = false;
         }
-        const Point dst = edgeOfChk(currPos, chkPoint, nextCheckpointDist);
 
+        const Point dst = farEdgeOfChk(currPos, chkPoint, nextCheckpointDist);
         cout << dst.x << " "
              << dst.y << speed << endl;
 
         prevDistance = nextCheckpointDist;
         prevPoint = chkPoint;
-        // cerr << currPos.x << " " << currPos.y << endl;
     }
 }
