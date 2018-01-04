@@ -29,7 +29,9 @@ struct Point {
 struct GameState {
     vector<pair<Point,int>> chks;
     bool collected = false, hasBoost = true, firstRun = true;
-    Point prevRecordedPoint = {0, 0}, prevPos, currPos, chkPoint;
+    Point prevRecordedPoint = {0, 0}, prevPos, currPos, chkPoint,
+        opponent,
+        target; //target to drive to
     int nextCheckpointDist, // distance to the next checkpoint
         nextCheckpointAngle, // angle between your pod orientation and the direction of the next checkpoint
         prevDistance;
@@ -102,7 +104,11 @@ int distance(const Point& a, const Point& b) {
     return sqrtf(adj*adj + opp*opp);
 }
 
-bool canHitOpponent(const Point& self, const Point& opp, Point chk, int chkAngle, int chkDist) {
+bool canHitOpponent(const GameState& s) {
+    // use separate variables to ease future refactoring for multiple cars
+    const Point& opp = s.opponent, chk = s.chkPoint, self = s.currPos;
+    int chkAngle = s.nextCheckpointAngle, chkDist = s.nextCheckpointDist;
+
     int oppDist    = distance(self, opp),
         oppChkDist = distance(opp, chk),
         oppAngle   = angleC(chkDist, oppDist, oppChkDist) - chkAngle;
@@ -171,9 +177,7 @@ int main() {
     GameState s;
     while (1) {
         cin >> s.currPos.x >> s.currPos.y >> s.chkPoint.x >> s.chkPoint.y >> s.nextCheckpointDist >> s.nextCheckpointAngle;
-        int opponentX;
-        int opponentY;
-        cin >> opponentX >> opponentY;
+        cin >> s.opponent.x >> s.opponent.y;
 
         if (s.firstRun) { // rationale: as if we always existed in that point
             s.prevPos = s.currPos;
@@ -214,9 +218,9 @@ int main() {
             }
         }
 
-        const Point dst = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
-        cout << dst.x << " "
-             << dst.y << speed << endl;
+        s.target = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
+        cout << s.target.x << " "
+             << s.target.y << speed << endl;
 
         s.prevDistance = s.nextCheckpointDist;
         s.prevPos = s.currPos;
