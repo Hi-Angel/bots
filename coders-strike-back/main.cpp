@@ -29,12 +29,14 @@ struct Point {
 struct GameState {
     vector<pair<Point,int>> chks;
     bool collected = false, hasBoost = true, firstRun = true;
-    Point prevRecordedPoint = {0, 0}, prevPos, currPos, chkPoint,
+    Point prevRecordedPoint = {0, 0}, prevPos, currPos,
+        chkPoint,
         opponent,
         target; //target to drive to
     int nextCheckpointDist, // distance to the next checkpoint
-        nextCheckpointAngle, // angle between your pod orientation and the direction of the next checkpoint
-        prevDistance;
+        nextCheckpointAngle, // NOTE: it's -180..180, negative is the left
+        prevDistance,
+        currSpeed = 0;
 };
 
 struct MaybePoint {
@@ -88,7 +90,7 @@ Point farEdgeOfChk(const Point& car, const Point& chkpoint, int chkDistance) {
 }
 
 inline constexpr float degToRad(int degree) { return degree*(M_PI/180); }
-inline constexpr float radToDeg(int rad) { return rad*(180/M_PI); }
+inline constexpr float radToDeg(float rad) { return rad*(180/M_PI); }
 
 // every big letter is an angle opposite to its small letter counterpart, meaning a
 // side a and b are adjacent sides, order of a and b doesn't matter
@@ -112,7 +114,13 @@ bool canHitOpponent(const GameState& s) {
     int oppDist    = distance(self, opp),
         oppChkDist = distance(opp, chk),
         oppAngle   = angleC(chkDist, oppDist, oppChkDist) - chkAngle;
-    return (((oppAngle <= 30 && oppAngle >= 330) || (oppAngle >= 150 && oppAngle <= 210))
+
+    cerr << "chkDist " << chkDist << " oppDist " << oppDist << " oppChkDist " << oppChkDist << endl;
+    cerr << "oppANgle: " << oppAngle << " chkANgle " << chkAngle << endl;
+    return (((oppAngle <= 50 && oppAngle >= 320) || (oppAngle >= 130 && oppAngle <= 200)
+             // now go for an experiment: if an opponent right behind me that close,
+             // he's probably drive my direction
+             || (oppAngle >= 190 && oppAngle <= 350))
             && oppDist - carRadius*2 <= 200);
 }
 
@@ -184,12 +192,18 @@ int main() {
             s.prevDistance = s.nextCheckpointDist;
             s.firstRun = false;
         }
-
-        int speedI = bisectSpeed(s.nextCheckpointDist+chkPointRadius,
-                                 s.nextCheckpointAngle,
-                                 distance(s.prevPos, s.currPos) // poor man's speed, it doesn't count inertia
-                                 );
-        string speed = " " + to_string(speedI);
+        string speed;
+        if (canHitOpponent(s)) {
+            s.target = s.opponent;
+            speed = " SHIELD";
+        } else {
+            s.target = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
+            s.currSpeed = bisectSpeed(s.nextCheckpointDist+chkPointRadius,
+                                      s.nextCheckpointAngle,
+                                      distance(s.prevPos, s.currPos) // poor man's speed, it doesn't count inertia
+                                      );
+            speed = " " + to_string(s.currSpeed);
+        }
 
         if (!s.collected) {
             if (s.prevRecordedPoint != s.chkPoint) {
@@ -205,8 +219,8 @@ int main() {
                 }
             }
         } else if (s.hasBoost && (s.nextCheckpointAngle >= -1
-                                && s.nextCheckpointAngle <= 1
-                                && speedI == 100)) {
+                                  && s.nextCheckpointAngle <= 1
+                                  && s.currSpeed == 100)) {
             assert(s.chks.size() > 1);
             pair<Point,int> farthest = s.chks[0];
             for (uint i = 1; i < s.chks.size(); ++i)
@@ -218,7 +232,6 @@ int main() {
             }
         }
 
-        s.target = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
         cout << s.target.x << " "
              << s.target.y << speed << endl;
 
