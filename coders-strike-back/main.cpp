@@ -142,8 +142,8 @@ bool canHitOpponent(const GameState& s) {
     //         oppAngle = selfToChkOppAngle + chkAngle;
     // }
 
-    cerr << "chkDist " << chkDist << " oppDist " << oppDist << " oppChkDist " << oppChkDist << endl;
-    cerr << "oppANgle: " << oppAngle << " chkANgle " << chkAngle << endl;
+    // cerr << "chkDist " << chkDist << " oppDist " << oppDist << " oppChkDist " << oppChkDist << endl;
+    // cerr << "oppANgle: " << oppAngle << " chkANgle " << chkAngle << endl;
     return (((abs(oppAngle) >= 50 && abs(oppAngle) <= 130)
              // now go for an experiment: if an opponent right behind me so close,
              // he probably drives my direction
@@ -159,9 +159,9 @@ float oppositeLen(float aLen, float bLen, int abAngle) {
 
 // angle between previous pos and the actual pos
 int inertiaAngle(GameState s) {
-    cerr << " distance(s.oughtPos, s.prevPos): " << distance(s.prevPos, s.oughtPos)
-    << " distance(s.prevPos, s.currPos): " << distance(s.prevPos, s.currPos)
-    << " distance(s.oughtPos, s.currPos): " << distance(s.oughtPos, s.currPos) << endl;
+    // cerr << " distance(s.oughtPos, s.prevPos): " << distance(s.prevPos, s.oughtPos)
+    //      << " distance(s.prevPos, s.currPos): " << distance(s.prevPos, s.currPos)
+    //      << " distance(s.oughtPos, s.currPos): " << distance(s.oughtPos, s.currPos) << endl;
     return angleC(distance(s.prevPos, s.oughtPos), // s.speed,
                   distance(s.prevPos, s.currPos),
                   distance(s.oughtPos, s.currPos));
@@ -232,10 +232,10 @@ int main() {
             s.prevDistance = s.nextCheckpointDist;
             s.prevAngle = 0;
         }
-        s.speed = s.prevDistance - s.nextCheckpointDist;
+        s.speed = distance(s.prevPos, s.currPos);
 
         string speed;
-        cerr << "speed " << s.speed << endl;
+        // cerr << "speed " << s.speed << endl;
         if (canHitOpponent(s) && rounds >= 3) {
             s.target = s.opponent;
             // if (s.speed >= 200) {
@@ -250,7 +250,7 @@ int main() {
             s.target = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
             s.currAcc = bisectAccel(s.nextCheckpointDist+chkPointRadius,
                                     targetAngle,
-                                    distance(s.prevPos, s.currPos) // poor man's speed, it doesn't count inertia
+                                    s.speed // poor man's speed, it doesn't count inertia
                                     );
             speed = " " + to_string(s.currAcc);
         }
