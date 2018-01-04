@@ -57,7 +57,7 @@ struct MaybeStats {
 //     edgeChkY = carY + newAdj
 // return (edgeChkX, edgeChkY)
 
-Point farEdgeOfChk(Point car, Point chkpoint, int chkDistance) {
+Point farEdgeOfChk(const Point& car, const Point& chkpoint, int chkDistance) {
     int hyp = chkDistance,
         opposite = chkpoint.x - car.x,
         adjacent = chkpoint.y - car.y;
@@ -114,11 +114,12 @@ bool circlesIntersect(Point a, Point b, int radius) {
     return abs(a.x - b.x) <= radius && abs(a.y - b.y) <= radius;
 }
 
-// poor man's speed, it doesn't count inertia
-int currSpeed(Point prev, Point curr) {
-    int xDist = abs(prev.x - curr.x),
-        yDist = abs(prev.y - curr.y);
-    return sqrtf(xDist*xDist + yDist*yDist);
+
+int distance(const Point& a, const Point& b) {
+    // distance is length of hypotenuse in right triangle between the points
+    int adj = abs(a.x - b.x),
+        opp = abs(a.y - b.y);
+    return sqrtf(adj*adj + opp*opp);
 }
 
 // Point targetInChk(Point prevPos, Point pos, Point chkpoint, int chkDst) {
@@ -139,9 +140,9 @@ int currSpeed(Point prev, Point curr) {
  **/
 int main() {
     vector<pair<Point,int>> chks;
-    bool collected = false, hasBoost = true;
-    Point prevRecordedPoint = {0, 0}, prevPos = {0, 0};
-    int prevDistance = 0;
+    bool collected = false, hasBoost = true, firstRun = true;
+    Point prevRecordedPoint = {0, 0}, prevPos;
+    int prevDistance;
     while (1) {
         Point currPos, chkPoint;
         int nextCheckpointDist; // distance to the next checkpoint
@@ -151,10 +152,17 @@ int main() {
         int opponentY;
         cin >> opponentX >> opponentY;
 
-        int speedI = (prevDistance >= nextCheckpointDist && prevPos == currPos)? 0 // hack for inertia
+        if (firstRun) { // rationale: as if we always existed in that point
+            prevPos = currPos;
+            prevDistance = nextCheckpointDist;
+            firstRun = false;
+        }
+
+        int speedI = (prevDistance <= nextCheckpointDist && prevPos != currPos)? 0 // hack for inertia
             : bisectSpeed(nextCheckpointDist+chkPointRadius,
                           nextCheckpointAngle,
-                          currSpeed(prevPos, currPos));
+                          distance(prevPos, currPos) // poor man's speed, it doesn't count inertia
+                          );
         string tmp = " " + to_string(speedI);
         const char* speed = tmp.c_str();
 
@@ -190,8 +198,9 @@ int main() {
              << dst.y << speed << endl;
 
         prevDistance = nextCheckpointDist;
-        prevPos = chkPoint;
+        prevPos = currPos;
     }
 }
 
-// todo: distance seems to be 400 per 100; also inertia looks undocumented.
+// todo: 1. distance seems to be 400 per 100; also inertia looks undocumented.
+// 2. move whole state into a struct in order to pretty print whole info for debugging.
