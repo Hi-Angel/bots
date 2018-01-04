@@ -32,11 +32,14 @@ struct GameState {
     Point prevRecordedPoint = {0, 0}, prevPos, currPos,
         chkPoint,
         opponent,
-        target; //target to drive to
+        target, //target to drive to
+        oughtPos;
     int nextCheckpointDist, // distance to the next checkpoint
         nextCheckpointAngle, // NOTE: it's -180..180, negative is the left
         prevDistance,
-        currSpeed = 0;
+        prevAngle = 0,
+        currAcc = 0,
+        speed; // it's a substract of prev and curr distance, don't trust too much
 };
 
 struct MaybePoint {
@@ -94,12 +97,14 @@ inline constexpr float radToDeg(float rad) { return rad*(180/M_PI); }
 
 // every big letter is an angle opposite to its small letter counterpart, meaning a
 // side. a and b are adjacent sides, order of a and b doesn't matter
-int angleC(int a, int b, int c) {
+int angleC(float a, float b, float c) {
+    if (!(a && b && c)) // there's no angle, and calculations don't handle it
+        return 0;
     float cos_c = (a*a + b*b - c*c) / (float)(2*a*b);
     return radToDeg(acosf(cos_c));
 }
 
-int distance(const Point& a, const Point& b) {
+float distance(const Point& a, const Point& b) {
     // distance is length of hypotenuse in right triangle between the points
     int adj = a.x - b.x,
         opp = a.y - b.y;
@@ -152,12 +157,22 @@ float oppositeLen(float aLen, float bLen, int abAngle) {
     return sqrtf(cLenSquared);
 }
 
+// angle between previous pos and the actual pos
+int inertiaAngle(GameState s) {
+    cerr << " distance(s.oughtPos, s.prevPos): " << distance(s.prevPos, s.oughtPos)
+    << " distance(s.prevPos, s.currPos): " << distance(s.prevPos, s.currPos)
+    << " distance(s.oughtPos, s.currPos): " << distance(s.oughtPos, s.currPos) << endl;
+    return angleC(distance(s.prevPos, s.oughtPos), // s.speed,
+                  distance(s.prevPos, s.currPos),
+                  distance(s.oughtPos, s.currPos));
+}
+
 // bisection does not produce optimal speed. Consider the len interval (10…7…10),
 // where we strive for lowest possible len. Which half shall bisection choose, left
 // or right? To get the optimum you'd need to use optimization techniques instead,
 // but I don't know them offhand, and for now I consider bisection good enough. I may
 // possibly change my mind though.
-int bisectSpeed(int carDist, int carAngle, int speed) {
+int bisectAccel(int carDist, int carAngle, int speed) {
     // terms: "adjacent len" is a "speed" from a trigonometric POV
     int bottom = 0, top = 100;
     float bottomLen = oppositeLen(carDist, bottom+speed, carAngle),
@@ -208,23 +223,40 @@ int main() {
     while (1) {
         cin >> s.currPos.x >> s.currPos.y >> s.chkPoint.x >> s.chkPoint.y >> s.nextCheckpointDist >> s.nextCheckpointAngle;
         cin >> s.opponent.x >> s.opponent.y;
+        s.speed = s.prevDistance - s.nextCheckpointDist;
 
         if (s.firstRun) { // rationale: as if we always existed in that point
+            s.firstRun = false;
             s.prevPos = s.currPos;
             s.prevDistance = s.nextCheckpointDist;
-            s.firstRun = false;
+            s.prevAngle = 0;
         }
+
+        float tmpCos = (s.prevAngle == 0) ? 1 : cosf(degToRad(s.prevAngle)),
+            tmpSin = (s.prevAngle == 0) ? 1 : sinf(degToRad(s.prevAngle));
+        cerr << "tmpCos: " << tmpCos << endl;
+        s.oughtPos = {s.prevPos.x + ((s.chkPoint.x <= s.currPos.x)? -(s.speed * tmpCos)
+                                     : (s.speed * tmpCos)),
+                      s.prevPos.y + ((s.chkPoint.y <= s.currPos.y)? -(s.speed * tmpSin)
+                                     : (s.speed * tmpSin))};
+        cerr << "s.oughtPos: " << s.oughtPos << " s.prevPos: " << s.prevPos << " s.currPos: " << s.currPos << " s.speed " << s.speed << " s.prevAngle: " << s.prevAngle << endl;
+
         string speed;
         if (canHitOpponent(s)) {
             s.target = s.opponent;
             speed = " SHIELD";
+            s.currAcc = 0;
         } else {
+            int targetAngle = (s.nextCheckpointAngle >= 0)
+                ? s.nextCheckpointAngle + inertiaAngle(s)
+                : s.nextCheckpointAngle - inertiaAngle(s);
+            cerr << "inertiaAngle: " << inertiaAngle(s) << endl;
             s.target = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
-            s.currSpeed = bisectSpeed(s.nextCheckpointDist+chkPointRadius,
-                                      s.nextCheckpointAngle,
-                                      distance(s.prevPos, s.currPos) // poor man's speed, it doesn't count inertia
-                                      );
-            speed = " " + to_string(s.currSpeed);
+            s.currAcc = bisectAccel(s.nextCheckpointDist+chkPointRadius,
+                                    targetAngle,
+                                    distance(s.prevPos, s.currPos) // poor man's speed, it doesn't count inertia
+                                    );
+            speed = " " + to_string(s.currAcc);
         }
 
         if (!s.collected) {
@@ -242,7 +274,7 @@ int main() {
             }
         } else if (s.hasBoost && (s.nextCheckpointAngle >= -1
                                   && s.nextCheckpointAngle <= 1
-                                  && s.currSpeed == 100)) {
+                                  && s.currAcc == 100)) {
             assert(s.chks.size() > 1);
             pair<Point,int> farthest = s.chks[0];
             for (uint i = 1; i < s.chks.size(); ++i)
@@ -259,6 +291,7 @@ int main() {
 
         s.prevDistance = s.nextCheckpointDist;
         s.prevPos = s.currPos;
+        s.prevAngle = s.nextCheckpointAngle;
     }
 }
 
