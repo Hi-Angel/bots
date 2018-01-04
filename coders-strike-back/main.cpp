@@ -158,10 +158,9 @@ int main() {
             firstRun = false;
         }
 
-        int speedI = (prevDistance <= nextCheckpointDist && prevPos != currPos)? 0 // hack for inertia
-            : bisectSpeed(nextCheckpointDist+chkPointRadius,
-                          nextCheckpointAngle,
-                          distance(prevPos, currPos) // poor man's speed, it doesn't count inertia
+        int speedI = bisectSpeed(nextCheckpointDist+chkPointRadius,
+                                 nextCheckpointAngle,
+                                 distance(prevPos, currPos) // poor man's speed, it doesn't count inertia
                           );
         string tmp = " " + to_string(speedI);
         const char* speed = tmp.c_str();
