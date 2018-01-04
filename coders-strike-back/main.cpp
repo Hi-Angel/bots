@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <algorithm>
 #include <cassert>
 #include <utility>
 #include <cmath>
@@ -121,8 +120,8 @@ bool circlesIntersect(Point a, Point b, int radius) {
 
 int distance(const Point& a, const Point& b) {
     // distance is length of hypotenuse in right triangle between the points
-    int adj = abs(a.x - b.x),
-        opp = abs(a.y - b.y);
+    int adj = a.x - b.x,
+        opp = a.y - b.y;
     return sqrtf(adj*adj + opp*opp);
 }
 
