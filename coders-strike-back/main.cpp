@@ -101,7 +101,7 @@ int angleC(float a, float b, float c) {
     if (!(a && b && c)) // there's no angle, and calculations don't handle it
         return 0;
     float cos_c = (a*a + b*b - c*c) / (float)(2*a*b);
-    return radToDeg(acosf(cos_c));
+    return (cos_c > 1)? 0 : radToDeg(acosf(cos_c));
 }
 
 float distance(const Point& a, const Point& b) {
@@ -220,10 +220,11 @@ bool circlesIntersect(Point a, Point b, int radius) {
  **/
 int main() {
     GameState s;
+    unsigned rounds = 0;
     while (1) {
+        rounds++;
         cin >> s.currPos.x >> s.currPos.y >> s.chkPoint.x >> s.chkPoint.y >> s.nextCheckpointDist >> s.nextCheckpointAngle;
         cin >> s.opponent.x >> s.opponent.y;
-        s.speed = s.prevDistance - s.nextCheckpointDist;
 
         if (s.firstRun) { // rationale: as if we always existed in that point
             s.firstRun = false;
@@ -231,26 +232,21 @@ int main() {
             s.prevDistance = s.nextCheckpointDist;
             s.prevAngle = 0;
         }
-
-        float tmpCos = (s.prevAngle == 0) ? 1 : cosf(degToRad(s.prevAngle)),
-            tmpSin = (s.prevAngle == 0) ? 1 : sinf(degToRad(s.prevAngle));
-        cerr << "tmpCos: " << tmpCos << endl;
-        s.oughtPos = {s.prevPos.x + ((s.chkPoint.x <= s.currPos.x)? -(s.speed * tmpCos)
-                                     : (s.speed * tmpCos)),
-                      s.prevPos.y + ((s.chkPoint.y <= s.currPos.y)? -(s.speed * tmpSin)
-                                     : (s.speed * tmpSin))};
-        cerr << "s.oughtPos: " << s.oughtPos << " s.prevPos: " << s.prevPos << " s.currPos: " << s.currPos << " s.speed " << s.speed << " s.prevAngle: " << s.prevAngle << endl;
+        s.speed = s.prevDistance - s.nextCheckpointDist;
 
         string speed;
-        if (canHitOpponent(s)) {
+        cerr << "speed " << s.speed << endl;
+        if (canHitOpponent(s) && rounds >= 3) {
             s.target = s.opponent;
-            speed = " SHIELD";
-            s.currAcc = 0;
+            // if (s.speed >= 200) {
+                speed = " SHIELD";
+                s.currAcc = 0;
+            // } else {
+            //     speed = " 100";
+            //     s.currAcc = 100;
+            // }
         } else {
-            int targetAngle = (s.nextCheckpointAngle >= 0)
-                ? s.nextCheckpointAngle + inertiaAngle(s)
-                : s.nextCheckpointAngle - inertiaAngle(s);
-            cerr << "inertiaAngle: " << inertiaAngle(s) << endl;
+            int targetAngle = s.nextCheckpointAngle;
             s.target = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
             s.currAcc = bisectAccel(s.nextCheckpointDist+chkPointRadius,
                                     targetAngle,
