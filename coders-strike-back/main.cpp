@@ -9,7 +9,8 @@
 using namespace std;
 using uint = unsigned;
 
-const unsigned short chkPointRadius = 600;
+const unsigned short chkPointRadius = 600,
+    carRadius = 400;
 
 struct Point {
     int x, y;
@@ -23,6 +24,15 @@ struct Point {
         os << "x: " << p.x << " y: " << p.y;
         return os;
     }
+};
+
+struct GameState {
+    vector<pair<Point,int>> chks;
+    bool collected = false, hasBoost = true, firstRun = true;
+    Point prevRecordedPoint = {0, 0}, prevPos, currPos, chkPoint;
+    int nextCheckpointDist, // distance to the next checkpoint
+        nextCheckpointAngle, // angle between your pod orientation and the direction of the next checkpoint
+        prevDistance;
 };
 
 struct MaybePoint {
@@ -75,7 +85,30 @@ Point farEdgeOfChk(const Point& car, const Point& chkpoint, int chkDistance) {
     return {edgeChkX, edgeChkY};
 }
 
-float degToRad(int degree) { return degree*(M_PI/180); }
+inline constexpr float degToRad(int degree) { return degree*(M_PI/180); }
+inline constexpr float radToDeg(int rad) { return rad*(180/M_PI); }
+
+// every big letter is an angle opposite to its small letter counterpart, meaning a
+// side a and b are adjacent sides, order of a and b doesn't matter
+int angleC(int a, int b, int c) {
+    float cos_c = (a*a + b*b - c*c) / (float)(2*a*b);
+    return radToDeg(acosf(cos_c));
+}
+
+int distance(const Point& a, const Point& b) {
+    // distance is length of hypotenuse in right triangle between the points
+    int adj = a.x - b.x,
+        opp = a.y - b.y;
+    return sqrtf(adj*adj + opp*opp);
+}
+
+bool canHitOpponent(const Point& self, const Point& opp, Point chk, int chkAngle, int chkDist) {
+    int oppDist    = distance(self, opp),
+        oppChkDist = distance(opp, chk),
+        oppAngle   = angleC(chkDist, oppDist, oppChkDist) - chkAngle;
+    return (((oppAngle <= 30 && oppAngle >= 330) || (oppAngle >= 150 && oppAngle <= 210))
+            && oppDist - carRadius*2 <= 200);
+}
 
 float oppositeLen(float aLen, float bLen, int abAngle) {
     float cLenSquared = (aLen * aLen) + (bLen * bLen)
@@ -118,13 +151,6 @@ bool circlesIntersect(Point a, Point b, int radius) {
 }
 
 
-int distance(const Point& a, const Point& b) {
-    // distance is length of hypotenuse in right triangle between the points
-    int adj = a.x - b.x,
-        opp = a.y - b.y;
-    return sqrtf(adj*adj + opp*opp);
-}
-
 // Point targetInChk(Point prevPos, Point pos, Point chkpoint, int chkDst) {
 //     int farEdge = farEdgeOfChk(pos,chkpoint, chkDst);
 //     // todo: if angle between prevPos and pos too big, correct the target
@@ -142,65 +168,59 @@ int distance(const Point& a, const Point& b) {
  * the standard input according to the problem statement.
  **/
 int main() {
-    vector<pair<Point,int>> chks;
-    bool collected = false, hasBoost = true, firstRun = true;
-    Point prevRecordedPoint = {0, 0}, prevPos;
-    int prevDistance;
+    GameState s;
     while (1) {
-        Point currPos, chkPoint;
-        int nextCheckpointDist; // distance to the next checkpoint
-        int nextCheckpointAngle; // angle between your pod orientation and the direction of the next checkpoint
-        cin >> currPos.x >> currPos.y >> chkPoint.x >> chkPoint.y >> nextCheckpointDist >> nextCheckpointAngle;
+        cin >> s.currPos.x >> s.currPos.y >> s.chkPoint.x >> s.chkPoint.y >> s.nextCheckpointDist >> s.nextCheckpointAngle;
         int opponentX;
         int opponentY;
         cin >> opponentX >> opponentY;
 
-        if (firstRun) { // rationale: as if we always existed in that point
-            prevPos = currPos;
-            prevDistance = nextCheckpointDist;
-            firstRun = false;
+        if (s.firstRun) { // rationale: as if we always existed in that point
+            s.prevPos = s.currPos;
+            s.prevDistance = s.nextCheckpointDist;
+            s.firstRun = false;
         }
 
-        int speedI = bisectSpeed(nextCheckpointDist+chkPointRadius,
-                                 nextCheckpointAngle,
-                                 distance(prevPos, currPos) // poor man's speed, it doesn't count inertia
+        int speedI = bisectSpeed(s.nextCheckpointDist+chkPointRadius,
+                                 s.nextCheckpointAngle,
+                                 distance(s.prevPos, s.currPos) // poor man's speed, it doesn't count inertia
                           );
         string tmp = " " + to_string(speedI);
         const char* speed = tmp.c_str();
 
-        if (!collected) {
-            if (prevRecordedPoint != chkPoint) {
-                for (uint i = 0; i < chks.size(); ++i)
-                    if (chks[i].first == chkPoint) {
-                        prevRecordedPoint = chkPoint;
-                        collected = true;
+        if (!s.collected) {
+            if (s.prevRecordedPoint != s.chkPoint) {
+                for (uint i = 0; i < s.chks.size(); ++i)
+                    if (s.chks[i].first == s.chkPoint) {
+                        s.prevRecordedPoint = s.chkPoint;
+                        s.collected = true;
                         break;
                     }
-                if (!collected) {
-                    chks.push_back({chkPoint, nextCheckpointDist});
-                    prevRecordedPoint = chkPoint;
+                if (!s.collected) {
+                    s.chks.push_back({s.chkPoint, s.nextCheckpointDist});
+                    s.prevRecordedPoint = s.chkPoint;
                 }
             }
-        } else if (hasBoost && (nextCheckpointAngle >= -1
-                                && nextCheckpointAngle <= 1
+        } else if (s.hasBoost && (s.nextCheckpointAngle >= -1
+                                && s.nextCheckpointAngle <= 1
                                 && speedI == 100)) {
-            assert(chks.size() > 1);
-            pair<Point,int> farthest = chks[0];
-            for (uint i = 1; i < chks.size(); ++i)
-                if (farthest.second < chks[i].second)
-                    farthest = chks[i];
-            if (circlesIntersect(farthest.first, chkPoint, chkPointRadius)) {
+            assert(s.chks.size() > 1);
+            pair<Point,int> farthest = s.chks[0];
+            for (uint i = 1; i < s.chks.size(); ++i)
+                if (farthest.second < s.chks[i].second)
+                    farthest = s.chks[i];
+            if (circlesIntersect(farthest.first, s.chkPoint, chkPointRadius)) {
                 speed = " BOOST";
-                hasBoost = false;
+                s.hasBoost = false;
             }
         }
 
-        const Point dst = farEdgeOfChk(currPos, chkPoint, nextCheckpointDist);
+        const Point dst = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
         cout << dst.x << " "
              << dst.y << speed << endl;
 
-        prevDistance = nextCheckpointDist;
-        prevPos = currPos;
+        s.prevDistance = s.nextCheckpointDist;
+        s.prevPos = s.currPos;
     }
 }
 
