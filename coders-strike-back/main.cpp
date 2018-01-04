@@ -93,7 +93,7 @@ inline constexpr float degToRad(int degree) { return degree*(M_PI/180); }
 inline constexpr float radToDeg(float rad) { return rad*(180/M_PI); }
 
 // every big letter is an angle opposite to its small letter counterpart, meaning a
-// side a and b are adjacent sides, order of a and b doesn't matter
+// side. a and b are adjacent sides, order of a and b doesn't matter
 int angleC(int a, int b, int c) {
     float cos_c = (a*a + b*b - c*c) / (float)(2*a*b);
     return radToDeg(acosf(cos_c));
@@ -106,21 +106,43 @@ int distance(const Point& a, const Point& b) {
     return sqrtf(adj*adj + opp*opp);
 }
 
+// calculates whether the point in question is left or right to line.
+// note: if it's on the line, value is undefined, for my purposes that's okay
+bool isLeftToLine(Point start, Point end, Point q) {
+    return ((q.x - start.x)*(end.y - start.y) - (q.y - start.y) * (end.x - start.x))
+        > 0;
+}
+
 bool canHitOpponent(const GameState& s) {
     // use separate variables to ease future refactoring for multiple cars
     const Point& opp = s.opponent, chk = s.chkPoint, self = s.currPos;
-    int chkAngle = s.nextCheckpointAngle, chkDist = s.nextCheckpointDist;
+    const int chkAngle = s.nextCheckpointAngle, // -180..180
+        chkDist = s.nextCheckpointDist;
 
-    int oppDist    = distance(self, opp),
+    const int oppDist = distance(self, opp),
         oppChkDist = distance(opp, chk),
-        oppAngle   = angleC(chkDist, oppDist, oppChkDist) - chkAngle;
+        selfToChkOppAngle = isLeftToLine(self, chk, opp)
+            ? -angleC(chkDist, oppDist, oppChkDist)
+            : angleC(chkDist, oppDist, oppChkDist),
+        oppAngle = selfToChkOppAngle + chkAngle;
+    // if (chkAngle > 0) { just a memo
+    //     if (oppAngle > 0)
+    //         oppAngle = selfToChkOppAngle + chkAngle;
+    //     else
+    //         oppAngle = selfToChkOppAngle + chkAngle;
+    // } else {
+    //     if (oppAngle > 0)
+    //         oppAngle = selfToChkOppAngle + chkAngle;
+    //     else
+    //         oppAngle = selfToChkOppAngle + chkAngle;
+    // }
 
     cerr << "chkDist " << chkDist << " oppDist " << oppDist << " oppChkDist " << oppChkDist << endl;
     cerr << "oppANgle: " << oppAngle << " chkANgle " << chkAngle << endl;
-    return (((oppAngle <= 50 && oppAngle >= 320) || (oppAngle >= 130 && oppAngle <= 200)
-             // now go for an experiment: if an opponent right behind me that close,
-             // he's probably drive my direction
-             || (oppAngle >= 190 && oppAngle <= 350))
+    return (((abs(oppAngle) >= 50 && abs(oppAngle) <= 130)
+             // now go for an experiment: if an opponent right behind me so close,
+             // he probably drives my direction
+             || (abs(oppAngle) >= 190))
             && oppDist - carRadius*2 <= 200);
 }
 
