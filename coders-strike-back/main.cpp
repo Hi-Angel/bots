@@ -57,6 +57,10 @@ struct MaybeStats {
 //     edgeChkY = carY + newAdj
 // return (edgeChkX, edgeChkY)
 
+// when in doubt: far edge is a better target than close one because car won't slow
+// down unless in the radius. Arguably it's causing problems upon movement under
+// inertia, but it's an irrlevant problem, and I don't think putting out inertia by
+// moving slower (i.e. to close edge) beats cases when it's okay to move faster.
 Point farEdgeOfChk(const Point& car, const Point& chkpoint, int chkDistance) {
     int hyp = chkDistance,
         opposite = chkpoint.x - car.x,
