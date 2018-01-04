@@ -184,9 +184,8 @@ int main() {
         int speedI = bisectSpeed(s.nextCheckpointDist+chkPointRadius,
                                  s.nextCheckpointAngle,
                                  distance(s.prevPos, s.currPos) // poor man's speed, it doesn't count inertia
-                          );
-        string tmp = " " + to_string(speedI);
-        const char* speed = tmp.c_str();
+                                 );
+        string speed = " " + to_string(speedI);
 
         if (!s.collected) {
             if (s.prevRecordedPoint != s.chkPoint) {
