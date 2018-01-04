@@ -121,10 +121,10 @@ int currSpeed(Point prev, Point curr) {
     return sqrtf(xDist*xDist + yDist*yDist);
 }
 
-Point targetInChk(Point prevPos, Point pos, Point chkpoint, int chkDst) {
-    int farEdge = farEdgeOfChk(pos,chkpoint, chkDst);
-    // todo: if angle between prevPos and pos too big, correct the target
-}
+// Point targetInChk(Point prevPos, Point pos, Point chkpoint, int chkDst) {
+//     int farEdge = farEdgeOfChk(pos,chkpoint, chkDst);
+//     // todo: if angle between prevPos and pos too big, correct the target
+// }
 
 // Point target(Point opponent, Point chk) {
 //     // if the opponent directly before us, target them
@@ -151,9 +151,10 @@ int main() {
         int opponentY;
         cin >> opponentX >> opponentY;
 
-        int speedI = bisectSpeed(nextCheckpointDist+chkPointRadius,
-                                 nextCheckpointAngle,
-                                 currSpeed(prevPos, currPos));
+        int speedI = (prevDistance >= nextCheckpointDist && prevPos == currPos)? 0 // hack for inertia
+            : bisectSpeed(nextCheckpointDist+chkPointRadius,
+                          nextCheckpointAngle,
+                          currSpeed(prevPos, currPos));
         string tmp = " " + to_string(speedI);
         const char* speed = tmp.c_str();
 
