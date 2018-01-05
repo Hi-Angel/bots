@@ -118,8 +118,7 @@ bool isLeftToLine(Point start, Point end, Point q) {
         > 0;
 }
 
-bool canHitOpponent(const GameState& s) {
-    // use separate variables to ease future refactoring for multiple cars
+bool canHitOpponent(const GameState& s) {// use separate variables to ease future refactoring for multiple cars
     const Point& opp = s.opponent, chk = s.chkPoint, self = s.currPos;
     const int chkAngle = s.nextCheckpointAngle, // -180..180
         chkDist = s.nextCheckpointDist;
@@ -293,3 +292,7 @@ int main() {
 
 // todo: 1. distance seems to be 400 per 100; also inertia looks undocumented.
 // 2. move whole state into a struct in order to pretty print whole info for debugging.
+// 3. find a way to calculate left and right edges of spheres to α) target the
+// farthest left/right edge to escape inertia, and β) to target an opponent withing
+// the check, and γ) to calculate left/right edges of an opponent with regard to its
+// speed to figure if we can hit it.
