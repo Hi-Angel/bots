@@ -138,7 +138,6 @@ bool canHitOpponent(const GameState& s) {
     const int chkAngle = s.nextCheckpointAngle, // -180..180
         chkDist = s.nextCheckpointDist;
 
-    cerr << "s.speedRelToOpp " << s.speedRelToOpp << endl;
     const int oppDist = distance(self, opp),
         oppChkDist = distance(opp, chk),
         selfToChkOppAngle = isLeftToLine(self, chk, opp)
@@ -163,7 +162,14 @@ bool canHitOpponent(const GameState& s) {
              // now go for an experiment: if an opponent right behind me so close,
              // he probably drives my direction
              || (abs(oppAngle) >= 190))
-            && oppDist - carRadius*2 <= s.speedRelToOpp);
+            && oppDist - carRadius*2 <= s.speedRelToOpp+100);
+}
+
+bool canShieldOpponent(const GameState& s) {
+    // use separate variables to ease future refactoring for multiple cars
+    const Point& opp = s.oppPos, self = s.currPos;
+    const int oppDist = distance(self, opp);
+    return (oppDist - carRadius*2 <= s.speedRelToOpp);
 }
 
 float oppositeLen(float aLen, float bLen, int abAngle) {
@@ -232,12 +238,10 @@ Point shiftByRad(const Point& origin, const Point& edge, float shiftRad) {
     Point p = edge - origin;
     p.y *= -1; // flip coordinate system
     if (shiftRad >= 0) {
-        cerr << "clockwise" << ", p: " << p << endl;
         p = { cosf(shiftRad) * p.x + sinf(shiftRad) * p.y,
               sinf(-shiftRad) * p.x + cosf(-shiftRad) * p.y };
     } else {
         shiftRad = abs(shiftRad);
-        cerr << "counterclockwise, p: " << p << endl;
         p = { cosf(shiftRad) * p.x - sinf(shiftRad) * p.y,
               sinf(shiftRad) * p.x + cosf(shiftRad) * p.y };
     }
@@ -282,16 +286,18 @@ int main() {
         s.speed = distance(s.prevPos, s.currPos);
 
         string speed;
+        bool attacking = false;
         // cerr << "speed " << s.speed << endl;
-        if (canHitOpponent(s) && rounds >= 5) {
+        if (canShieldOpponent(s) && rounds >= 5) {
             s.target = s.oppPos;
-            // if (s.speed >= 200) {
-                speed = " SHIELD";
-                s.currAcc = 0;
-            // } else {
-            //     speed = " 100";
-            //     s.currAcc = 100;
-            // }
+            speed = " SHIELD";
+            s.currAcc = 0;
+            attacking = true;
+        } else if (canHitOpponent(s) && rounds >= 5) {
+            s.target = s.oppPos;
+            speed = " 100";
+            s.currAcc = 100;
+            attacking = true;
         } else {
             int inertia = inertiaAngle(s, s.chkPoint);
             assert (abs(inertia) <= 90);
@@ -300,7 +306,6 @@ int main() {
                                     s.nextCheckpointAngle+inertia,
                                     s.speed // poor man's speed, it doesn't count inertia
                                     );
-            cerr << "inertia "<< inertia << endl;
             speed = " " + to_string(s.currAcc);
         }
 
@@ -319,7 +324,7 @@ int main() {
             }
         } else if (s.hasBoost && (s.nextCheckpointAngle >= -1
                                   && s.nextCheckpointAngle <= 1
-                                  && s.currAcc == 100)) {
+                                  && !attacking)) {
             assert(s.chks.size() > 1);
             pair<Point,int> farthest = s.chks[0];
             for (uint i = 1; i < s.chks.size(); ++i)
