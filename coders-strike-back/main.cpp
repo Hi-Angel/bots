@@ -20,6 +20,9 @@ struct Point {
     bool operator!=(const Point& p) const {
         return !(p == *this);
     }
+    Point operator-(const Point& rhs) const {
+        return {x - rhs.x, y - rhs.y};
+    }
     friend ostream& operator<<(ostream& os, const Point& p) {
         os << "x: " << p.x << " y: " << p.y;
         return os;
@@ -32,12 +35,10 @@ struct GameState {
     Point prevRecordedPoint = {0, 0}, prevPos, currPos,
         chkPoint,
         opponent,
-        target, //target to drive to
-        oughtPos;
+        target; //target to drive to
     int nextCheckpointDist, // distance to the next checkpoint
-        nextCheckpointAngle, // NOTE: it's -180..180, negative is the left
+        nextCheckpointAngle, // NOTE: it's -180..180, negative is left angle
         prevDistance,
-        prevAngle = 0,
         currAcc = 0,
         speed; // it's a substract of prev and curr distance, don't trust too much
 };
@@ -156,14 +157,19 @@ float oppositeLen(float aLen, float bLen, int abAngle) {
     return sqrtf(cLenSquared);
 }
 
-// angle between previous pos and the actual pos
-int inertiaAngle(GameState s) {
+// returns the checkpoint angle between prev and curr positions. Negative if
+// counterclockwise, positive otherwise.
+int inertiaAngle(const GameState& s) {
     // cerr << " distance(s.oughtPos, s.prevPos): " << distance(s.prevPos, s.oughtPos)
     //      << " distance(s.prevPos, s.currPos): " << distance(s.prevPos, s.currPos)
     //      << " distance(s.oughtPos, s.currPos): " << distance(s.oughtPos, s.currPos) << endl;
-    return angleC(distance(s.prevPos, s.oughtPos), // s.speed,
-                  distance(s.prevPos, s.currPos),
-                  distance(s.oughtPos, s.currPos));
+    // int inertia = angleC(distance(s.prevPos, s.chkPoint), // s.speed,
+    //                      distance(s.prevPos, s.currPos),
+    //                      distance(s.chkPoint, s.currPos));
+    int inertia = angleC(distance(s.chkPoint, s.currPos), // s.speed,
+                         distance(s.chkPoint, s.prevPos),
+                         distance(s.prevPos, s.currPos));
+    return (isLeftToLine(s.chkPoint, s.prevPos, s.currPos))? -inertia : inertia;
 }
 
 // bisection does not produce optimal speed. Consider the len interval (10…7…10),
@@ -196,10 +202,23 @@ int bisectAccel(int carDist, int carAngle, int speed) {
     }
 }
 
-bool circlesIntersect(Point a, Point b, int radius) {
+bool circlesIntersect(const Point& a, const Point& b, int radius) {
     return abs(a.x - b.x) <= radius && abs(a.y - b.y) <= radius;
 }
 
+
+// if shiftByRad >= 0 then clockwise movement else counterclockwise
+Point shiftByRad(const Point& origin, const Point& edge, float shiftRad) {
+    Point p = edge - origin;
+    if (shiftRad >= 0) {
+        return { ((cosf(shiftRad) * p.x + sinf(shiftRad) * p.y) + origin.x),
+                 ((sinf(shiftRad) * p.x + cosf(shiftRad) * p.y) + origin.y) };
+    } else {
+        shiftRad = abs(shiftRad);
+        return { ((cosf(shiftRad) * p.x - sinf(shiftRad) * p.y) + origin.x),
+                 ((sinf(shiftRad) * p.x + cosf(shiftRad) * p.y) + origin.y) };
+    }
+}
 
 // Point targetInChk(Point prevPos, Point pos, Point chkpoint, int chkDst) {
 //     int farEdge = farEdgeOfChk(pos,chkpoint, chkDst);
@@ -229,7 +248,6 @@ int main() {
             s.firstRun = false;
             s.prevPos = s.currPos;
             s.prevDistance = s.nextCheckpointDist;
-            s.prevAngle = 0;
         }
         s.speed = distance(s.prevPos, s.currPos);
 
@@ -245,12 +263,20 @@ int main() {
             //     s.currAcc = 100;
             // }
         } else {
-            int targetAngle = s.nextCheckpointAngle;
-            s.target = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
-            s.currAcc = bisectAccel(s.nextCheckpointDist+chkPointRadius,
-                                    targetAngle,
-                                    s.speed // poor man's speed, it doesn't count inertia
-                                    );
+            int inertia = inertiaAngle(s);
+            if (abs(inertia) <= 90) {
+                s.target = shiftByRad(s.currPos, s.chkPoint, degToRad(inertia));
+                s.currAcc = 100;
+                cerr << "inertia "<< inertia << endl;
+            } else {
+                int targetAngle = s.nextCheckpointAngle;
+                s.target = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
+                s.currAcc = bisectAccel(s.nextCheckpointDist+chkPointRadius,
+                                        targetAngle,
+                                        s.speed // poor man's speed, it doesn't count inertia
+                                        );
+
+            }
             speed = " " + to_string(s.currAcc);
         }
 
@@ -286,7 +312,6 @@ int main() {
 
         s.prevDistance = s.nextCheckpointDist;
         s.prevPos = s.currPos;
-        s.prevAngle = s.nextCheckpointAngle;
     }
 }
 
