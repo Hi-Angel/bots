@@ -23,6 +23,10 @@ struct Point {
     Point operator-(const Point& rhs) const {
         return {x - rhs.x, y - rhs.y};
     }
+    void operator+=(const Point& rhs) {
+        x += rhs.x;
+        y += rhs.y;
+    }
     friend ostream& operator<<(ostream& os, const Point& p) {
         os << "x: " << p.x << " y: " << p.y;
         return os;
@@ -206,18 +210,25 @@ bool circlesIntersect(const Point& a, const Point& b, int radius) {
     return abs(a.x - b.x) <= radius && abs(a.y - b.y) <= radius;
 }
 
-
+// shifts the point along the edge of circle
 // if shiftByRad >= 0 then clockwise movement else counterclockwise
 Point shiftByRad(const Point& origin, const Point& edge, float shiftRad) {
     Point p = edge - origin;
+    p.y *= -1; // flip coordinate system
     if (shiftRad >= 0) {
-        return { ((cosf(shiftRad) * p.x + sinf(shiftRad) * p.y) + origin.x),
-                 ((sinf(shiftRad) * p.x + cosf(shiftRad) * p.y) + origin.y) };
+        shiftRad *= -1;
+        cerr << "clockwise" << ", p: " << p << endl;
+        p = { cosf(shiftRad) * p.x + sinf(shiftRad) * p.y,
+              sinf(shiftRad) * p.x + cosf(shiftRad) * p.y };
     } else {
         shiftRad = abs(shiftRad);
-        return { ((cosf(shiftRad) * p.x - sinf(shiftRad) * p.y) + origin.x),
-                 ((sinf(shiftRad) * p.x + cosf(shiftRad) * p.y) + origin.y) };
+        cerr << "counterclockwise, p: " << p << endl;
+        p = { cosf(shiftRad) * p.x - sinf(shiftRad) * p.y,
+              sinf(shiftRad) * p.x + cosf(shiftRad) * p.y };
     }
+    p.y *= -1; // restore coordinate system
+    p += origin;
+    return p;
 }
 
 // Point targetInChk(Point prevPos, Point pos, Point chkpoint, int chkDst) {
@@ -253,7 +264,7 @@ int main() {
 
         string speed;
         // cerr << "speed " << s.speed << endl;
-        if (canHitOpponent(s) && rounds >= 3) {
+        if (canHitOpponent(s) && rounds >= 5) {
             s.target = s.opponent;
             // if (s.speed >= 200) {
                 speed = " SHIELD";
@@ -266,7 +277,10 @@ int main() {
             int inertia = inertiaAngle(s);
             if (abs(inertia) <= 90) {
                 s.target = shiftByRad(s.currPos, s.chkPoint, degToRad(inertia));
-                s.currAcc = 100;
+                s.currAcc = bisectAccel(s.nextCheckpointDist,
+                                        inertia,
+                                        s.speed // poor man's speed, it doesn't count inertia
+                                        );
                 cerr << "inertia "<< inertia << endl;
             } else {
                 int targetAngle = s.nextCheckpointAngle;
