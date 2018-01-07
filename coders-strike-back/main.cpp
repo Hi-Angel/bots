@@ -216,10 +216,9 @@ Point shiftByRad(const Point& origin, const Point& edge, float shiftRad) {
     Point p = edge - origin;
     p.y *= -1; // flip coordinate system
     if (shiftRad >= 0) {
-        shiftRad *= -1;
         cerr << "clockwise" << ", p: " << p << endl;
         p = { cosf(shiftRad) * p.x + sinf(shiftRad) * p.y,
-              sinf(shiftRad) * p.x + cosf(shiftRad) * p.y };
+              sinf(-shiftRad) * p.x + cosf(-shiftRad) * p.y };
     } else {
         shiftRad = abs(shiftRad);
         cerr << "counterclockwise, p: " << p << endl;
@@ -278,7 +277,7 @@ int main() {
             if (abs(inertia) <= 90) {
                 s.target = shiftByRad(s.currPos, s.chkPoint, degToRad(inertia));
                 s.currAcc = bisectAccel(s.nextCheckpointDist,
-                                        inertia,
+                                        s.nextCheckpointAngle+inertia,
                                         s.speed // poor man's speed, it doesn't count inertia
                                         );
                 cerr << "inertia "<< inertia << endl;
