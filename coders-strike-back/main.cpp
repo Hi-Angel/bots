@@ -132,7 +132,16 @@ bool isLeftToLine(const Point& start, const Point& end, const Point& q) {
         > 0;
 }
 
+bool isDotInCircle(const Point& origin, int rad, const Point& dot) {
+    int x_diff = dot.x - origin.x,
+        y_diff = dot.y - origin.y;
+    return x_diff*x_diff + y_diff*y_diff <= rad * rad;
+}
+
 bool canHitOpponent(const GameState& s) {
+    if (isDotInCircle(s.chkPoint, chkPointRadius, s.oppPos)
+        && s.oppDistance <= carRadius*4)
+        return true;
     // use separate variables to ease future refactoring for multiple cars
     const Point& opp = s.oppPos, chk = s.chkPoint, self = s.currPos;
     const int chkAngle = s.nextCheckpointAngle, // -180..180
