@@ -51,7 +51,8 @@ struct GameState {
         currAcc = 0,
         oppDistance,
         speed, // it's a substract of prev and curr distance, don't trust too much
-        prevSpeedRelToOpp, speedRelToOpp; // speed relative to opponent
+        prevOppDistance,
+        speedRelToOpp; // speed relative to opponent
     Range globOppAngle;
 };
 
@@ -126,16 +127,18 @@ float distance(const Point& a, const Point& b) {
 
 // calculates whether the point in question is left or right to line.
 // note: if it's on the line, value is undefined, for my purposes that's okay
-bool isLeftToLine(Point start, Point end, Point q) {
+bool isLeftToLine(const Point& start, const Point& end, const Point& q) {
     return ((q.x - start.x)*(end.y - start.y) - (q.y - start.y) * (end.x - start.x))
         > 0;
 }
 
-bool canHitOpponent(const GameState& s) {// use separate variables to ease future refactoring for multiple cars
+bool canHitOpponent(const GameState& s) {
+    // use separate variables to ease future refactoring for multiple cars
     const Point& opp = s.oppPos, chk = s.chkPoint, self = s.currPos;
     const int chkAngle = s.nextCheckpointAngle, // -180..180
         chkDist = s.nextCheckpointDist;
 
+    cerr << "s.speedRelToOpp " << s.speedRelToOpp << endl;
     const int oppDist = distance(self, opp),
         oppChkDist = distance(opp, chk),
         selfToChkOppAngle = isLeftToLine(self, chk, opp)
@@ -169,11 +172,6 @@ float oppositeLen(float aLen, float bLen, int abAngle) {
     return sqrtf(cLenSquared);
 }
 
-// Range oppAngle(const GameState& s) {
-//     float hyp = oppositeLen(s.oppDistance, carRadius, 90);
-//     return { }
-// }
-
 // returns the checkpoint angle between prev and curr positions. Negative if
 // counterclockwise, positive otherwise.
 int inertiaAngle(const GameState& s, const Point& target) {
@@ -188,6 +186,11 @@ int inertiaAngle(const GameState& s, const Point& target) {
                          distance(s.prevPos, s.currPos));
     return (isLeftToLine(s.chkPoint, s.prevPos, s.currPos))? -inertia : inertia;
 }
+
+// Range oppAngle(const GameState& s) {
+//     float hyp = oppositeLen(s.oppDistance, carRadius, 90);
+//     return { }
+// }
 
 // bisection does not produce optimal speed. Consider the len interval (10…7…10),
 // where we strive for lowest possible len. Which half shall bisection choose, left
@@ -272,10 +275,10 @@ int main() {
             s.prevPos       = s.currPos;
             s.prevDistance  = s.nextCheckpointDist;
             s.oppDistance   = distance(s.oppPos, s.currPos);
-            s.prevSpeedRelToOpp = s.oppDistance;
+            s.prevOppDistance = s.oppDistance;
         }
         s.oppDistance   = distance(s.oppPos, s.currPos);
-        s.speedRelToOpp = abs(s.prevSpeedRelToOpp) - abs(s.oppDistance);
+        s.speedRelToOpp = abs(s.prevOppDistance) - abs(s.oppDistance);
         s.speed = distance(s.prevPos, s.currPos);
 
         string speed;
@@ -333,7 +336,7 @@ int main() {
 
         s.prevDistance = s.nextCheckpointDist;
         s.prevPos = s.currPos;
-        s.prevSpeedRelToOpp = s.speedRelToOpp;
+        s.prevOppDistance = s.oppDistance;
     }
 }
 
