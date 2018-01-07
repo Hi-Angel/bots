@@ -33,18 +33,26 @@ struct Point {
     }
 };
 
+struct Range {
+    int start, end;
+};
+
 struct GameState {
     vector<pair<Point,int>> chks;
     bool collected = false, hasBoost = true, firstRun = true;
-    Point prevRecordedPoint = {0, 0}, prevPos, currPos,
-        chkPoint,
-        opponent,
+    Point prevPos, currPos,
+        prevRecordedPoint = {0, 0}, chkPoint,
+        oppPos,
         target; //target to drive to
     int nextCheckpointDist, // distance to the next checkpoint
         nextCheckpointAngle, // NOTE: it's -180..180, negative is left angle
+        globMovementAngle,
         prevDistance,
         currAcc = 0,
-        speed; // it's a substract of prev and curr distance, don't trust too much
+        oppDistance,
+        speed, // it's a substract of prev and curr distance, don't trust too much
+        prevSpeedRelToOpp, speedRelToOpp; // speed relative to opponent
+    Range globOppAngle;
 };
 
 struct MaybePoint {
@@ -124,7 +132,7 @@ bool isLeftToLine(Point start, Point end, Point q) {
 }
 
 bool canHitOpponent(const GameState& s) {// use separate variables to ease future refactoring for multiple cars
-    const Point& opp = s.opponent, chk = s.chkPoint, self = s.currPos;
+    const Point& opp = s.oppPos, chk = s.chkPoint, self = s.currPos;
     const int chkAngle = s.nextCheckpointAngle, // -180..180
         chkDist = s.nextCheckpointDist;
 
@@ -152,7 +160,7 @@ bool canHitOpponent(const GameState& s) {// use separate variables to ease futur
              // now go for an experiment: if an opponent right behind me so close,
              // he probably drives my direction
              || (abs(oppAngle) >= 190))
-            && oppDist - carRadius*2 <= 200);
+            && oppDist - carRadius*2 <= s.speedRelToOpp);
 }
 
 float oppositeLen(float aLen, float bLen, int abAngle) {
@@ -161,17 +169,22 @@ float oppositeLen(float aLen, float bLen, int abAngle) {
     return sqrtf(cLenSquared);
 }
 
+// Range oppAngle(const GameState& s) {
+//     float hyp = oppositeLen(s.oppDistance, carRadius, 90);
+//     return { }
+// }
+
 // returns the checkpoint angle between prev and curr positions. Negative if
 // counterclockwise, positive otherwise.
-int inertiaAngle(const GameState& s) {
+int inertiaAngle(const GameState& s, const Point& target) {
     // cerr << " distance(s.oughtPos, s.prevPos): " << distance(s.prevPos, s.oughtPos)
     //      << " distance(s.prevPos, s.currPos): " << distance(s.prevPos, s.currPos)
     //      << " distance(s.oughtPos, s.currPos): " << distance(s.oughtPos, s.currPos) << endl;
     // int inertia = angleC(distance(s.prevPos, s.chkPoint), // s.speed,
     //                      distance(s.prevPos, s.currPos),
     //                      distance(s.chkPoint, s.currPos));
-    int inertia = angleC(distance(s.chkPoint, s.currPos), // s.speed,
-                         distance(s.chkPoint, s.prevPos),
+    int inertia = angleC(distance(target, s.currPos), // s.speed,
+                         distance(target, s.prevPos),
                          distance(s.prevPos, s.currPos));
     return (isLeftToLine(s.chkPoint, s.prevPos, s.currPos))? -inertia : inertia;
 }
@@ -252,19 +265,23 @@ int main() {
     while (1) {
         rounds++;
         cin >> s.currPos.x >> s.currPos.y >> s.chkPoint.x >> s.chkPoint.y >> s.nextCheckpointDist >> s.nextCheckpointAngle;
-        cin >> s.opponent.x >> s.opponent.y;
+        cin >> s.oppPos.x >> s.oppPos.y;
 
         if (s.firstRun) { // rationale: as if we always existed in that point
-            s.firstRun = false;
-            s.prevPos = s.currPos;
-            s.prevDistance = s.nextCheckpointDist;
+            s.firstRun      = false;
+            s.prevPos       = s.currPos;
+            s.prevDistance  = s.nextCheckpointDist;
+            s.oppDistance   = distance(s.oppPos, s.currPos);
+            s.prevSpeedRelToOpp = s.oppDistance;
         }
+        s.oppDistance   = distance(s.oppPos, s.currPos);
+        s.speedRelToOpp = abs(s.prevSpeedRelToOpp) - abs(s.oppDistance);
         s.speed = distance(s.prevPos, s.currPos);
 
         string speed;
         // cerr << "speed " << s.speed << endl;
         if (canHitOpponent(s) && rounds >= 5) {
-            s.target = s.opponent;
+            s.target = s.oppPos;
             // if (s.speed >= 200) {
                 speed = " SHIELD";
                 s.currAcc = 0;
@@ -273,23 +290,14 @@ int main() {
             //     s.currAcc = 100;
             // }
         } else {
-            int inertia = inertiaAngle(s);
-            if (abs(inertia) <= 90) {
-                s.target = shiftByRad(s.currPos, s.chkPoint, degToRad(inertia));
-                s.currAcc = bisectAccel(s.nextCheckpointDist,
-                                        s.nextCheckpointAngle+inertia,
-                                        s.speed // poor man's speed, it doesn't count inertia
-                                        );
-                cerr << "inertia "<< inertia << endl;
-            } else {
-                int targetAngle = s.nextCheckpointAngle;
-                s.target = farEdgeOfChk(s.currPos, s.chkPoint, s.nextCheckpointDist);
-                s.currAcc = bisectAccel(s.nextCheckpointDist+chkPointRadius,
-                                        targetAngle,
-                                        s.speed // poor man's speed, it doesn't count inertia
-                                        );
-
-            }
+            int inertia = inertiaAngle(s, s.chkPoint);
+            assert (abs(inertia) <= 90);
+            s.target = shiftByRad(s.currPos, s.chkPoint, degToRad(inertia));
+            s.currAcc = bisectAccel(s.nextCheckpointDist,
+                                    s.nextCheckpointAngle+inertia,
+                                    s.speed // poor man's speed, it doesn't count inertia
+                                    );
+            cerr << "inertia "<< inertia << endl;
             speed = " " + to_string(s.currAcc);
         }
 
@@ -325,12 +333,10 @@ int main() {
 
         s.prevDistance = s.nextCheckpointDist;
         s.prevPos = s.currPos;
+        s.prevSpeedRelToOpp = s.speedRelToOpp;
     }
 }
 
-// todo: 1. distance seems to be 400 per 100; also inertia looks undocumented.
-// 2. move whole state into a struct in order to pretty print whole info for debugging.
-// 3. find a way to calculate left and right edges of spheres to α) target the
-// farthest left/right edge to escape inertia, and β) to target an opponent withing
-// the check, and γ) to calculate left/right edges of an opponent with regard to its
-// speed to figure if we can hit it.
+// todo: 2. find a way to calculate left and right edges of spheres to β) to target
+// an opponent withing the check, and γ) to calculate left/right edges of an opponent
+// with regard to its speed to figure if we can hit it.
