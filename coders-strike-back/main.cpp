@@ -33,38 +33,36 @@ struct Point {
     }
 };
 
-struct Range {
-    int start, end;
+template <typename T>
+struct Maybe {
+    bool Just;
+    T val;
+};
+
+struct OppPod {
+    Point pos, prevPos;
+};
+
+struct OwnPod {
+    Point pos, prevPos,
+        target; //target to drive to
+    int chkDist, currAcc,
+        prevChkDist,
+        nextCheckpointAngle, // NOTE: it's -180..180, negative is left angle
+        chkId,
+        speedEstim; // it's a substract of prev and curr distance, don't trust too much
+    vector<int> speedRelToOpp, // speed relative to opponent by index
+        prevOppDist,
+        oppDist;
+    string speed;
+    bool attacking, hasBoost = true;
 };
 
 struct GameState {
     vector<pair<Point,int>> chks;
-    bool collected = false, hasBoost = true, firstRun = true;
-    Point prevPos, currPos,
-        prevRecordedPoint = {0, 0}, chkPoint,
-        oppPos,
-        target; //target to drive to
-    int nextCheckpointDist, // distance to the next checkpoint
-        nextCheckpointAngle, // NOTE: it's -180..180, negative is left angle
-        globMovementAngle,
-        prevDistance,
-        currAcc = 0,
-        oppDistance,
-        speed, // it's a substract of prev and curr distance, don't trust too much
-        prevOppDistance,
-        speedRelToOpp; // speed relative to opponent
-    Range globOppAngle;
-};
-
-struct MaybePoint {
-    bool valid;
-    Point p;
-};
-
-struct MaybeStats {
-    bool validStat, validPoint;
-    int prevDist, prevSpeed;
-    Point p;
+    bool firstRun = true;
+    vector<OppPod> opp;
+    vector<OwnPod> self;
 };
 
 // template< class InputIt, class T >
@@ -119,52 +117,60 @@ bool isDotInCircle(const Point& origin, int rad, const Point& dot) {
     return x_diff*x_diff + y_diff*y_diff <= rad * rad;
 }
 
-bool canHitOpponent(const GameState& s) {
-    if (isDotInCircle(s.chkPoint, chkPointRadius, s.oppPos)
-        && s.oppDistance <= carRadius*4)
-        return true;
-    // use separate variables to ease future refactoring for multiple cars
-    const Point& opp = s.oppPos, chk = s.chkPoint, self = s.currPos;
-    const int chkAngle = s.nextCheckpointAngle, // -180..180
-        chkDist = s.nextCheckpointDist;
+const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
+    for (uint i=0; i < s.opp.size(); ++i) {
+        const OppPod& opp = s.opp[i];
+        if (isDotInCircle(s.chks[self.chkId].first, chkPointRadius, opp.pos)
+            && self.oppDist[i] <= carRadius*4)
+            return {true, opp};
+        // use separate variables to ease future refactoring for multiple cars
+        const Point& chk = s.chks[self.chkId].first;
+        const int chkAngle = self.nextCheckpointAngle, // -180..180
+            chkDist = self.chkDist;
 
-    const int oppDist = distance(self, opp),
-        oppChkDist = distance(opp, chk),
-        selfToChkOppAngle = isLeftToLine(self, chk, opp)
+        const int oppDist = distance(self.pos, opp.pos),
+            oppChkDist = distance(opp.pos, chk),
+            selfToChkOppAngle = isLeftToLine(self.pos, chk, opp.pos)
             ? -angleC(chkDist, oppDist, oppChkDist)
             : angleC(chkDist, oppDist, oppChkDist),
-        oppAngle = selfToChkOppAngle + chkAngle;
-    // if (chkAngle > 0) { just a memo
-    //     if (oppAngle > 0)
-    //         oppAngle = selfToChkOppAngle + chkAngle;
-    //     else
-    //         oppAngle = selfToChkOppAngle + chkAngle;
-    // } else {
-    //     if (oppAngle > 0)
-    //         oppAngle = selfToChkOppAngle + chkAngle;
-    //     else
-    //         oppAngle = selfToChkOppAngle + chkAngle;
-    // }
+            oppAngle = selfToChkOppAngle + chkAngle;
+        // if (chkAngle > 0) { just a memo
+        //     if (oppAngle > 0)
+        //         oppAngle = selfToChkOppAngle + chkAngle;
+        //     else
+        //         oppAngle = selfToChkOppAngle + chkAngle;
+        // } else {
+        //     if (oppAngle > 0)
+        //         oppAngle = selfToChkOppAngle + chkAngle;
+        //     else
+        //         oppAngle = selfToChkOppAngle + chkAngle;
+        // }
 
-    // cerr << "chkDist " << chkDist << " oppDist " << oppDist << " oppChkDist " << oppChkDist << endl;
-    // cerr << "oppANgle: " << oppAngle << " chkANgle " << chkAngle << endl;
-    return (((abs(oppAngle) >= 50 && abs(oppAngle) <= 130)
-             // now go for an experiment: if an opponent right behind me so close,
-             // he probably drives my direction
-             || (abs(oppAngle) >= 190))
-            && oppDist - carRadius*2 <= s.speedRelToOpp+100);
+        // cerr << "chkDist " << chkDist << " oppDist " << oppDist << " oppChkDist " << oppChkDist << endl;
+        // cerr << "oppANgle: " << oppAngle << " chkANgle " << chkAngle << endl;
+        if (((abs(oppAngle) >= 50 && abs(oppAngle) <= 130)
+                 // now go for an experiment: if an opponent right behind me so close,
+                 // he probably drives my direction
+                 || (abs(oppAngle) >= 190))
+                && oppDist - carRadius*2 <= self.speedRelToOpp[i]+100)
+            return {true, opp};
+    }
+    return {false, {}};
 }
 
-bool canShieldOpponent(const GameState& s) {
-    // use separate variables to ease future refactoring for multiple cars
-    const Point& opp = s.oppPos, self = s.currPos;
-    const int oppDist = distance(self, opp),
-        oppAngle = angleC(s.oppDistance, s.nextCheckpointDist,
-                          distance(s.oppPos, s.chkPoint));
-    return (oppDist - carRadius*2 <= s.speedRelToOpp
-            && s.speedRelToOpp >= 140 // else too slow, following 3 turns not worth it
-            && abs(oppAngle) >= 65 && abs(s.nextCheckpointAngle) >= 9 // don't push opponent forward
-            );
+const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self) {
+    for (uint i=0; i < s.opp.size(); ++i) {
+        const OppPod& opp = s.opp[i];
+        const int oppDist = self.oppDist[i],
+            oppAngle = angleC(oppDist, self.chkDist,
+                              distance(opp.pos, s.chks[self.chkId].first));
+        if (oppDist - carRadius*2 <= self.speedRelToOpp[i]
+                && self.speedRelToOpp[i] >= 140 // else too slow, following 3 turns not worth it
+                && abs(oppAngle) >= 65 && abs(self.nextCheckpointAngle) >= 9 // don't push opponent forward
+                )
+            return {true, opp};
+    }
+    return {false, {}};
 }
 
 float oppositeLen(float aLen, float bLen, int abAngle) {
@@ -175,17 +181,17 @@ float oppositeLen(float aLen, float bLen, int abAngle) {
 
 // returns the checkpoint angle between prev and curr positions. Negative if
 // counterclockwise, positive otherwise.
-int inertiaAngle(const GameState& s, const Point& target) {
-    // cerr << " distance(s.oughtPos, s.prevPos): " << distance(s.prevPos, s.oughtPos)
-    //      << " distance(s.prevPos, s.currPos): " << distance(s.prevPos, s.currPos)
+int inertiaAngle(const Point& chkPoint, const OwnPod& self, const Point& target) {
+    // cerr << " distance(s.oughtPos, s.opp.pos): " << distance(s.opp.pos, s.oughtPos)
+    //      << " distance(s.opp.pos, s.currPos): " << distance(s.opp.pos, s.currPos)
     //      << " distance(s.oughtPos, s.currPos): " << distance(s.oughtPos, s.currPos) << endl;
-    // int inertia = angleC(distance(s.prevPos, s.chkPoint), // s.speed,
-    //                      distance(s.prevPos, s.currPos),
+    // int inertia = angleC(distance(s.opp.pos, s.chkPoint), // s.speed,
+    //                      distance(s.opp.pos, s.currPos),
     //                      distance(s.chkPoint, s.currPos));
-    int inertia = angleC(distance(target, s.currPos), // s.speed,
-                         distance(target, s.prevPos),
-                         distance(s.prevPos, s.currPos));
-    return (isLeftToLine(s.chkPoint, s.prevPos, s.currPos))? -inertia : inertia;
+    int inertia = angleC(distance(target, self.pos), // s.speed,
+                         distance(target, self.prevPos),
+                         distance(self.prevPos, self.pos));
+    return (isLeftToLine(chkPoint, self.prevPos, self.pos))? -inertia : inertia;
 }
 
 // bisection does not produce optimal speed. Consider the len interval (10…7…10),
@@ -258,80 +264,111 @@ Point shiftByRad(const Point& origin, const Point& edge, float shiftRad) {
  **/
 int main() {
     GameState s;
-    unsigned rounds = 0;
+    s.self = vector<OwnPod>(2);
+    s.opp  = vector<OppPod>(2);
+    for (OwnPod& self : s.self) {
+        self.speedRelToOpp   = vector<int>(s.opp.size());
+        self.prevOppDist = vector<int>(s.opp.size());
+        self.oppDist         = vector<int>(s.opp.size());
+    }
+    unsigned short rounds = 0,
+        laps, checkAmount;
+    cin >> laps >> checkAmount;
+    for (uint i = 0; i < checkAmount; ++i) {
+        Point aChk;
+        cin >> aChk.x >> aChk.y;
+        s.chks.push_back({aChk, (i == 0)? 0 : distance(aChk, s.chks[i-1].first)});
+    }
+    cerr << "Initialized" << endl;
+
     while (1) {
         rounds++;
-        cin >> s.currPos.x >> s.currPos.y >> s.chkPoint.x >> s.chkPoint.y >> s.nextCheckpointDist >> s.nextCheckpointAngle;
-        cin >> s.oppPos.x >> s.oppPos.y;
+        int unused;
+        for (OwnPod& self : s.self) {
+            cin >> self.pos.x >> self.pos.y >> unused >> unused >> self.nextCheckpointAngle >> self.chkId;
+            self.chkDist = distance(self.pos, s.chks[self.chkId].first);
+        }
+        for (OppPod& opp : s.opp)
+            cin >> opp.pos.x >> opp.pos.y >> unused >> unused >> unused >> unused;
 
-        if (s.firstRun) { // rationale: as if we always existed in that point
+        if (s.firstRun) { // first round initialization
+            // rationale: as if we always existed in that point
             s.firstRun      = false;
-            s.prevPos       = s.currPos;
-            s.prevDistance  = s.nextCheckpointDist;
-            s.oppDistance   = distance(s.oppPos, s.currPos);
-            s.prevOppDistance = s.oppDistance;
-        }
-        s.oppDistance   = distance(s.oppPos, s.currPos);
-        s.speedRelToOpp = abs(s.prevOppDistance) - abs(s.oppDistance);
-        s.speed = distance(s.prevPos, s.currPos);
-
-        string speed;
-        bool attacking = false;
-        // cerr << "speed " << s.speed << endl;
-        if (canShieldOpponent(s) && rounds >= 5) {
-            s.target = s.oppPos;
-            speed = " SHIELD";
-            s.currAcc = 0;
-            attacking = true;
-        } else if (canHitOpponent(s) && rounds >= 5) {
-            s.target = s.oppPos;
-            speed = " 100";
-            s.currAcc = 100;
-            attacking = true;
-        } else {
-            int inertia = inertiaAngle(s, s.chkPoint);
-            assert (abs(inertia) <= 90);
-            s.target = shiftByRad(s.prevPos, s.chkPoint, degToRad(inertia));
-            s.currAcc = bisectAccel(s.nextCheckpointDist,
-                                    s.nextCheckpointAngle+inertia,
-                                    s.speed // poor man's speed, it doesn't count inertia
-                                    );
-            speed = " " + to_string(s.currAcc);
-        }
-
-        if (!s.collected) {
-            if (s.prevRecordedPoint != s.chkPoint) {
-                for (uint i = 0; i < s.chks.size(); ++i)
-                    if (s.chks[i].first == s.chkPoint) {
-                        s.prevRecordedPoint = s.chkPoint;
-                        s.collected = true;
-                        break;
-                    }
-                if (!s.collected) {
-                    s.chks.push_back({s.chkPoint, s.nextCheckpointDist});
-                    s.prevRecordedPoint = s.chkPoint;
+            for (OppPod& opp : s.opp)
+                opp.prevPos = opp.pos;
+            for (OwnPod& self : s.self) {
+                self.pos = self.pos;
+                self.prevChkDist = self.chkDist;
+                for (uint i = 0; i < s.opp.size(); ++i) {
+                    self.oppDist[i] = distance(s.opp[i].pos, self.pos);
+                    self.prevOppDist[i] = self.oppDist[i];
                 }
             }
-        } else if (s.hasBoost && (s.nextCheckpointAngle >= -1
-                                  && s.nextCheckpointAngle <= 1
-                                  && !attacking)) {
-            assert(s.chks.size() > 1);
-            pair<Point,int> farthest = s.chks[0];
-            for (uint i = 1; i < s.chks.size(); ++i)
-                if (farthest.second < s.chks[i].second)
-                    farthest = s.chks[i];
-            if (circlesIntersect(farthest.first, s.chkPoint, chkPointRadius)) {
-                speed = " BOOST";
-                s.hasBoost = false;
+        }
+
+        // every start round initialization
+        for (OwnPod& self : s.self) {
+            for (uint i=0; i < s.opp.size(); ++i) {
+                self.oppDist[i] = distance(s.opp[i].pos, self.pos);
+                self.speedRelToOpp[i] = abs(self.prevOppDist[i]) - abs(self.oppDist[i]);
+                self.speedRelToOpp[i] = distance(s.opp[i].pos, self.pos);
             }
         }
 
-        cout << s.target.x << " "
-             << s.target.y << speed << endl;
+        for (OwnPod& self : s.self) {
+            Maybe<OppPod> opp = canShieldOpponent(s, self);
+            if (opp.Just && rounds >= 5) {
+                self.target = opp.val.pos;
+                self.speed = " SHIELD";
+                self.currAcc = 0;
+                self.attacking = true;
+            } else
+                opp = canHitOpponent(s, self);
+            if (opp.Just && rounds >= 5) {
+                self.target = opp.val.pos;
+                self.speed = " 100";
+                self.currAcc = 100;
+                self.attacking = true;
+            } else {
+                int inertia = inertiaAngle(s.chks[self.chkId].first, self,
+                                           s.chks[self.chkId].first);
+                assert (abs(inertia) <= 90);
+                self.target = shiftByRad(self.prevPos, s.chks[self.chkId].first, degToRad(inertia));
+                self.currAcc = bisectAccel(self.chkDist,
+                                           self.nextCheckpointAngle+inertia,
+                                           self.speedEstim // poor man's speed, it doesn't count inertia
+                                        );
+                self.speed = " " + to_string(self.currAcc);
+                self.attacking = false;
+            }
+        }
 
-        s.prevDistance = s.nextCheckpointDist;
-        s.prevPos = s.currPos;
-        s.prevOppDistance = s.oppDistance;
+        for (OwnPod& self : s.self) {
+            if (self.hasBoost && (self.nextCheckpointAngle >= -1
+                                  && self.nextCheckpointAngle <= 1
+                                  && !self.attacking)) {
+                pair<Point,int> farthest = s.chks[0];
+                for (uint i = 1; i < s.chks.size(); ++i)
+                    if (farthest.second < s.chks[i].second)
+                        farthest = s.chks[i];
+                if (circlesIntersect(farthest.first, s.chks[self.chkId].first, chkPointRadius)) {
+                    self.speed = " BOOST";
+                    self.hasBoost = false;
+                }
+            }
+        }
+
+        for (OppPod& opp : s.opp)
+            opp.prevPos = opp.pos;
+        for (OwnPod& self : s.self) {
+            cout << self.target.x << " "
+                 << self.target.y << self.speed << endl;
+
+            self.prevChkDist = self.chkDist;
+            self.prevPos = self.pos;
+            for (uint i=0; i < s.opp.size(); ++i)
+                self.prevOppDist[i] = self.oppDist[i];
+        }
     }
 }
 
