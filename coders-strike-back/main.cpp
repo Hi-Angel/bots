@@ -158,9 +158,13 @@ bool canHitOpponent(const GameState& s) {
 bool canShieldOpponent(const GameState& s) {
     // use separate variables to ease future refactoring for multiple cars
     const Point& opp = s.oppPos, self = s.currPos;
-    const int oppDist = distance(self, opp);
+    const int oppDist = distance(self, opp),
+        oppAngle = angleC(s.oppDistance, s.nextCheckpointDist,
+                          distance(s.oppPos, s.chkPoint));
     return (oppDist - carRadius*2 <= s.speedRelToOpp
-            && s.speedRelToOpp >= 140); // too slow, following 3 turns not worth it
+            && s.speedRelToOpp >= 140 // else too slow, following 3 turns not worth it
+            && abs(oppAngle) >= 65 && abs(s.nextCheckpointAngle) >= 9 // don't push opponent forward
+            );
 }
 
 float oppositeLen(float aLen, float bLen, int abAngle) {
@@ -183,11 +187,6 @@ int inertiaAngle(const GameState& s, const Point& target) {
                          distance(s.prevPos, s.currPos));
     return (isLeftToLine(s.chkPoint, s.prevPos, s.currPos))? -inertia : inertia;
 }
-
-// Range oppAngle(const GameState& s) {
-//     float hyp = oppositeLen(s.oppDistance, carRadius, 90);
-//     return { }
-// }
 
 // bisection does not produce optimal speed. Consider the len interval (10…7…10),
 // where we strive for lowest possible len. Which half shall bisection choose, left
@@ -292,7 +291,7 @@ int main() {
         } else {
             int inertia = inertiaAngle(s, s.chkPoint);
             assert (abs(inertia) <= 90);
-            s.target = shiftByRad(s.currPos, s.chkPoint, degToRad(inertia));
+            s.target = shiftByRad(s.prevPos, s.chkPoint, degToRad(inertia));
             s.currAcc = bisectAccel(s.nextCheckpointDist,
                                     s.nextCheckpointAngle+inertia,
                                     s.speed // poor man's speed, it doesn't count inertia
