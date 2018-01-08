@@ -87,25 +87,6 @@ struct MaybeStats {
 //     edgeChkY = carY + newAdj
 // return (edgeChkX, edgeChkY)
 
-// when in doubt: far edge is a better target than close one because car won't slow
-// down unless in the radius. Arguably it's causing problems upon movement under
-// inertia, but it's an irrlevant problem, and I don't think putting out inertia by
-// moving slower (i.e. to close edge) beats cases when it's okay to move faster.
-Point farEdgeOfChk(const Point& car, const Point& chkpoint, int chkDistance) {
-    int hyp = chkDistance,
-        opposite = chkpoint.x - car.x,
-        adjacent = chkpoint.y - car.y;
-    float sin = opposite / (float)hyp,
-        cos = adjacent / (float)hyp;
-    assert(hyp >= chkPointRadius);
-    int newHyp = hyp + chkPointRadius,
-        newOpp = newHyp * sin,
-        newAdj = newHyp * cos,
-        edgeChkX = car.x + newOpp,
-        edgeChkY = car.y + newAdj;
-    return {edgeChkX, edgeChkY};
-}
-
 inline constexpr float degToRad(int degree) { return degree*(M_PI/180); }
 inline constexpr float radToDeg(float rad) { return rad*(180/M_PI); }
 
@@ -178,7 +159,8 @@ bool canShieldOpponent(const GameState& s) {
     // use separate variables to ease future refactoring for multiple cars
     const Point& opp = s.oppPos, self = s.currPos;
     const int oppDist = distance(self, opp);
-    return (oppDist - carRadius*2 <= s.speedRelToOpp);
+    return (oppDist - carRadius*2 <= s.speedRelToOpp
+            && s.speedRelToOpp >= 140); // too slow, following 3 turns not worth it
 }
 
 float oppositeLen(float aLen, float bLen, int abAngle) {
