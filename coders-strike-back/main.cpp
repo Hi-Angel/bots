@@ -28,7 +28,7 @@ struct Point {
         y += rhs.y;
     }
     friend ostream& operator<<(ostream& os, const Point& p) {
-        os << "x: " << p.x << " y: " << p.y;
+        os << "x = " << p.x << ", y = " << p.y;
         return os;
     }
 };
@@ -41,6 +41,11 @@ struct Maybe {
 
 struct OppPod {
     Point pos, prevPos;
+
+    friend ostream& operator<<(ostream& os, const OppPod& p) {
+        os << "pos{" << p.pos << "}, prevPos{" << p.prevPos << "}";
+        return os;
+    }
 };
 
 struct OwnPod {
@@ -56,6 +61,19 @@ struct OwnPod {
         oppDist;
     string speed;
     bool attacking, hasBoost = true;
+
+    friend ostream& operator<<(ostream& os, const OwnPod& p) {
+        os << "pos{" << p.pos << "}, prevPos{" << p.prevPos << "}, target{" << p.target << "}" << endl;
+        os << "chkDist = " << p.chkDist << ", currAcc = " << p.currAcc << ", prevChkDist = " << p.prevChkDist << endl
+           << ", nextCheckpointAngle = " << p.nextCheckpointAngle << ", chkId = " << p.chkId << ", speedEstim = " << p.speedEstim << endl;
+        for (uint i=0; i < p.speedRelToOpp.size(); ++i)
+            os << "speedRelToOpp = " << p.speedRelToOpp[i] << endl;
+        for (uint i=0; i < p.prevOppDist.size(); ++i)
+            os << "prevOppDist = " << p.prevOppDist[i] << endl;
+        for (uint i=0; i < p.oppDist.size(); ++i)
+            os << "oppDist = " << p.oppDist[i] << endl;
+        return os;
+    }
 };
 
 struct GameState {
@@ -63,6 +81,17 @@ struct GameState {
     bool firstRun = true;
     vector<OppPod> opp;
     vector<OwnPod> self;
+
+    friend ostream& operator<<(ostream& os, const GameState& s) {
+        for (uint i=0; i < s.chks.size(); ++i)
+            os << "Check#" << i << ": Point{" << s.chks[i].first << "} dist = " << s.chks[i].second << endl;
+        // first run whatever
+        for (uint i=0; i < s.opp.size(); ++i)
+            os << "Opp#" << i << ": " << s.opp[i] << endl;
+        for (uint i=0; i < s.self.size(); ++i)
+            os << "Own#" << i << ": " << s.self[i] << endl;
+        return os;
+    }
 };
 
 // template< class InputIt, class T >
@@ -314,7 +343,6 @@ int main() {
                 self.speedRelToOpp[i] = distance(s.opp[i].pos, self.pos);
             }
         }
-
         for (OwnPod& self : s.self) {
             Maybe<OppPod> opp = canShieldOpponent(s, self);
             if (opp.Just && rounds >= 5) {
@@ -325,11 +353,16 @@ int main() {
             } else
                 opp = canHitOpponent(s, self);
             if (opp.Just && rounds >= 5) {
+                // if (tmp == 2)
+                //     cerr << "can hit!, " << endl
+                //          << "Gamestate{\n" << s << "}\n";
                 self.target = opp.val.pos;
                 self.speed = " 100";
                 self.currAcc = 100;
                 self.attacking = true;
             } else {
+                // if (tmp == 2)
+                //     cerr << "target the check" << endl;
                 int inertia = inertiaAngle(s.chks[self.chkId].first, self,
                                            s.chks[self.chkId].first);
                 assert (abs(inertia) <= 90);
