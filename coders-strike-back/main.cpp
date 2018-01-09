@@ -194,14 +194,12 @@ const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
 const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self) {
     for (uint i=0; i < s.opp.size(); ++i) {
         const OppPod& opp = s.opp[i];
-        const int oppDist = self.oppDist[i],
-            oppAngle = angleC(oppDist, self.chkDist,
-                              distance(opp.pos, s.chks[self.chkId].first));
+        const int oppDist = self.oppDist[i];
         if (oppDist - carRadius*2 <= self.speedRelToOpp[i]
-                && self.speedRelToOpp[i] >= 140 // else too slow, following 3 turns not worth it
-                && abs(oppAngle) >= 65 && abs(self.chkAngle) >= 9 // don't push opponent forward
-                )
+            && self.speedRelToOpp[i] >= 140 // else too slow, following 3 turns not worth it
+            ) {
             return {true, opp};
+        }
     }
     return {false, {}};
 }
@@ -363,13 +361,16 @@ int main() {
                 self.speed = " SHIELD";
                 self.currAcc = 0;
                 self.attacking = true;
-            } else
-                opp = canHitOpponent(s, self);
+                continue;
+            }
+
+            opp = canHitOpponent(s, self);
             if (opp.Just && rounds >= 5) {
                 self.target = opp.val.pos;
                 self.speed = " 100";
                 self.currAcc = 100;
                 self.attacking = true;
+                continue;
             } else {
                 int inertia = inertiaAngle(s.chks[self.chkId].first, self,
                                            s.chks[self.chkId].first);
