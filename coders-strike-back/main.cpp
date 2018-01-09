@@ -44,6 +44,7 @@ struct Maybe {
 
 struct OppPod {
     Point pos, prevPos;
+    int globAngle;
 
     friend ostream& operator<<(ostream& os, const OppPod& p) {
         os << "pos{" << p.pos << "}, prevPos{" << p.prevPos << "}";
@@ -162,10 +163,11 @@ const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
             chkDist = self.chkDist;
 
         const int oppDist = distance(self.pos, opp.pos),
+            focus = 30,
             oppChkDist = distance(opp.pos, chk),
             selfToChkOppAngle = isLeftToLine(self.pos, chk, opp.pos)
-            ? -angleC(chkDist, oppDist, oppChkDist)
-            : angleC(chkDist, oppDist, oppChkDist),
+                ? -angleC(chkDist, oppDist, oppChkDist)
+                : angleC(chkDist, oppDist, oppChkDist),
             oppAngle = selfToChkOppAngle + chkAngle;
         // if (chkAngle > 0) { just a memo
         //     if (oppAngle > 0)
@@ -179,13 +181,10 @@ const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
         //         oppAngle = selfToChkOppAngle + chkAngle;
         // }
 
-        // cerr << "chkDist " << chkDist << " oppDist " << oppDist << " oppChkDist " << oppChkDist << endl;
-        // cerr << "oppANgle: " << oppAngle << " chkANgle " << chkAngle << endl;
-        if (((abs(oppAngle) >= 50 && abs(oppAngle) <= 130)
-                 // now go for an experiment: if an opponent right behind me so close,
-                 // he probably drives my direction
-                 || (abs(oppAngle) >= 190))
-                && oppDist - carRadius*2 <= self.speedRelToOpp[i]+100)
+        if ((abs(oppAngle) >= 50 && abs(oppAngle) <= 130
+              && abs(self.globAngle - opp.globAngle) >= focus
+             ) // don't push opponent forward
+            && oppDist - carRadius*2 <= self.speedRelToOpp[i]+100)
             return {true, opp};
     }
     return {false, {}};
@@ -194,9 +193,16 @@ const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
 const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self) {
     for (uint i=0; i < s.opp.size(); ++i) {
         const OppPod& opp = s.opp[i];
-        const int oppDist = self.oppDist[i];
+        const int oppDist = self.oppDist[i],
+            focus = 30,
+            oppAngle = angleC(oppDist, self.chkDist,
+                              distance(opp.pos, s.chks[self.chkId].first));
+
         if (oppDist - carRadius*2 <= self.speedRelToOpp[i]
-            && self.speedRelToOpp[i] >= 140 // else too slow, following 3 turns not worth it
+            && self.speedRelToOpp[i] >= 140 // else too slow, following 3 turns not
+                                           // worth it
+            && abs(oppAngle) >= 50 && abs(oppAngle) <= 130
+            && abs(self.globAngle - opp.globAngle) >= focus
             ) {
             return {true, opp};
         }
@@ -329,7 +335,8 @@ int main() {
                 : angleC(self.chkDist, carRadius, hyp);
         }
         for (OppPod& opp : s.opp)
-            cin >> opp.pos.x >> opp.pos.y >> unused >> unused >> unused >> unused;
+            cin >> opp.pos.x >> opp.pos.y >> unused >> unused
+                >> opp.globAngle >> unused;
 
         if (s.firstRun) { // first round initialization
             // rationale: as if we always existed in that point
@@ -354,7 +361,10 @@ int main() {
                 self.speedEstim = distance(self.prevPos, self.pos);
             }
         }
+        int tmp=0;
         for (OwnPod& self : s.self) {
+            ++tmp;
+            cerr << tmp << "th pod" << endl;
             Maybe<OppPod> opp = canShieldOpponent(s, self);
             if (opp.Just && rounds >= 5) {
                 self.target = opp.val.pos;
