@@ -385,10 +385,17 @@ void targetChk(const GameState& s, OwnPod& self, int chkId) {
 }
 
 Degree vectorAngle(const Point& vec) {
+    cerr << vec << endl;
     if (vec.x == 0)
         return {0};
-    else
-        return radToDeg(atanf(vec.y/vec.x));
+    Degree ret = radToDeg(atanf((float)vec.y/vec.x));
+    if (ret.val < 0 && vec.y < 0) // quadrant Ⅲ
+        ret.val = 180 - ret.val; // it actually adds
+    else if (ret.val < 0) // quadrant Ⅱ
+        ret.val = 180 + ret.val; // it actually substracts
+    else if (vec.y < 0) // quadrant Ⅳ
+        ret.val = 270 + (90 - ret.val);
+    return ret;
 }
 
 void defend(const GameState s, OwnPod& self, int defendee) {
