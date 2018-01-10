@@ -154,8 +154,22 @@ bool isDotInCircle(const Point& origin, int rad, const Point& dot) {
 
 
 bool isCirclesIntersect(uint rad1, uint rad2, uint distance) {
-    return rad1 + rad2 <= distance;
+    return rad1 + rad2 >= distance;
 }
+
+// moves a point by len, given its *global* angle, using the game coordinate system
+// (the one with flipped Y)
+Point movePoint(int len, float globAngle) {
+    return {len * cosf(globAngle), len * sinf(globAngle)};
+}
+
+template<typename Pod1, typename Pod2>
+bool doCarsCollide(Pod1 pod1, Pod2 pod2) {
+    const Point pos1 = pod1.pos + movePoint(pod1.speedEstim, pod1.globAngle),
+        pos2 = pod2.pos + movePoint(pod2.speedEstim, pod2.globAngle);
+    return isCirclesIntersect(carRadius, carRadius, distance(pos1, pos2));
+}
+
 const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
     for (uint i=0; i < s.opp.size(); ++i) {
         const OppPod& opp = s.opp[i];
@@ -189,7 +203,7 @@ const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
         if ((abs(oppAngle) >= 50 && abs(oppAngle) <= 130
               && abs(self.globAngle - opp.globAngle) >= focus
              ) // don't push opponent forward
-            && oppDist - carRadius*2 <= self.speedRelToOpp[i]+100)
+            && doCarsCollide(opp, self))
             return {true, opp};
     }
     return {false, {}};
@@ -203,7 +217,7 @@ const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self) {
             oppAngle = angleC(oppDist, self.chkDist,
                               distance(opp.pos, s.chks[self.chkId].first));
 
-        if (oppDist - carRadius*2 <= self.speedRelToOpp[i]
+        if (doCarsCollide(opp, self)
             && self.speedRelToOpp[i] >= 140 // else too slow, following 3 turns not
                                            // worth it
             && abs(oppAngle) >= 50 && abs(oppAngle) <= 130
@@ -299,19 +313,6 @@ Point shiftByRad(const Point& origin, const Point& edge, float shiftRad) {
 //     if (abs(oppAngle) >= 4)
 //         return chk;
 // }
-
-// moves a point by len, given its *global* angle, using the game coordinate system
-// (the one with flipped Y)
-Point movePoint(int len, float globAngle) {
-    return {len * cosf(globAngle), len * sinf(globAngle)};
-}
-
-template<typename Pod1, typename Pod2>
-bool doCarsCollide(Pod1 pod1, Pod2 pod2) {
-    const Point pos1 = pod1 + movePoint(pod1.speedEstim, pod1.globAngle),
-        pos2 = pod2 + movePoint(pod2.speedEstim, pod2.globAngle);
-    return isCirclesIntersect(carRadius, carRadius, distance(pos1, pos2));
-}
 
 int main() {
     GameState s;
