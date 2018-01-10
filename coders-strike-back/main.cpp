@@ -44,7 +44,8 @@ struct Maybe {
 
 struct OppPod {
     Point pos, prevPos;
-    int globAngle;
+    int globAngle,
+        speedEstim;
 
     friend ostream& operator<<(ostream& os, const OppPod& p) {
         os << "pos{" << p.pos << "}, prevPos{" << p.prevPos << "}";
@@ -151,6 +152,10 @@ bool isDotInCircle(const Point& origin, int rad, const Point& dot) {
     return x_diff*x_diff + y_diff*y_diff <= rad * rad;
 }
 
+
+bool isCirclesIntersect(uint rad1, uint rad2, uint distance) {
+    return rad1 + rad2 <= distance;
+}
 const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
     for (uint i=0; i < s.opp.size(); ++i) {
         const OppPod& opp = s.opp[i];
@@ -297,8 +302,15 @@ Point shiftByRad(const Point& origin, const Point& edge, float shiftRad) {
 
 // moves a point by len, given its *global* angle, using the game coordinate system
 // (the one with flipped Y)
-Point movePoint(int len, float angle) {
-    return {len * cosf(angle), len * sinf(angle)};
+Point movePoint(int len, float globAngle) {
+    return {len * cosf(globAngle), len * sinf(globAngle)};
+}
+
+template<typename Pod1, typename Pod2>
+bool doCarsCollide(Pod1 pod1, Pod2 pod2) {
+    const Point pos1 = pod1 + movePoint(pod1.speedEstim, pod1.globAngle),
+        pos2 = pod2 + movePoint(pod2.speedEstim, pod2.globAngle);
+    return isCirclesIntersect(carRadius, carRadius, distance(pos1, pos2));
 }
 
 int main() {
@@ -338,6 +350,7 @@ int main() {
             cin >> opp.pos.x >> opp.pos.y >> unused >> unused
                 >> opp.globAngle >> unused;
 
+
         if (s.firstRun) { // first round initialization
             // rationale: as if we always existed in that point
             s.firstRun      = false;
@@ -361,10 +374,10 @@ int main() {
                 self.speedEstim = distance(self.prevPos, self.pos);
             }
         }
-        int tmp=0;
+        for (OppPod& opp : s.opp)
+            opp.speedEstim  = distance(opp.prevPos, opp.pos);
+
         for (OwnPod& self : s.self) {
-            ++tmp;
-            cerr << tmp << "th pod" << endl;
             Maybe<OppPod> opp = canShieldOpponent(s, self);
             if (opp.Just && rounds >= 5) {
                 self.target = opp.val.pos;
