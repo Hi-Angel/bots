@@ -183,7 +183,7 @@ bool isLeftToLine(const Point& start, const Point& end, const Point& q) {
 // (the one with flipped Y)
 Point movePoint(int len, const Radian& globAngle) {
     Point ret = {len * cosf(globAngle.val), len * sinf(globAngle.val)};
-    cerr << "point moved: " << ret << " globAngle: " << globAngle.val << endl;
+    // cerr << "point moved: " << ret << " globAngle: " << globAngle.val << endl;
     return ret;
 }
 
@@ -242,7 +242,6 @@ bool doCarsCollide(Pod1 pod1, Pod2 pod2) {
 
 inline bool sameFocusedDirection(const Degree& selfAngle, const Degree& oppAngle) {
     // the angles are 0..360°
-    // cerr << ((abs(selfAngle - oppAngle) <= 29) ? "true" : "false") << endl;
     return abs((selfAngle - oppAngle).val) <= 29;
 }
 
@@ -253,13 +252,11 @@ const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
             && self.oppDist[i] <= carRadius*4)
             return {true, opp};
         if (doCarsCollide(opp, self)) {
-            cerr << "Did collide!" << endl;
             if (!sameFocusedDirection(self.globAngle, opp.globAngle))
                 return {true, opp};
             else if (isOppBehind(self, opp))
                 return {true, opp};
-        } else
-            cerr << "No collision!" << endl;
+        }
     }
     return {false, {}};
 }
@@ -278,8 +275,7 @@ const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self) {
                 return {true, opp};
             else if (isOppBehind(self, opp))
                 return {true, opp};
-        } else
-            cerr << "No collision!" << endl;
+        }
     }
     return {false, {}};
 }
