@@ -15,6 +15,10 @@ const unsigned short chkPointRadius = 600,
 template<typename T>
 struct NumWrapper {
     T val;
+    friend ostream& operator<<(ostream& os, const NumWrapper& w) {
+        os << w.val;
+        return os;
+    }
     friend istream& operator>>(istream& is, NumWrapper& w) {
         is >> w.val;
         return is;
@@ -70,7 +74,8 @@ struct Maybe {
 
 struct OppPod {
     Point pos, prevPos;
-    Degree globAngle;
+    Degree globAngle,
+        moveAngle;
     int speedEstim;
 
     friend ostream& operator<<(ostream& os, const OppPod& p) {
@@ -348,17 +353,53 @@ Point shiftByRad(const Point& origin, const Point& edge, Radian shiftRad) {
     return p;
 }
 
-// Point targetInChk(Point prevPos, Point pos, Point chkpoint, int chkDst) {
-//     int farEdge = farEdgeOfChk(pos,chkpoint, chkDst);
-//     // todo: if angle between prevPos and pos too big, correct the target
-// }
+void targetOpp(OwnPod& self, const OppPod& opp) {
+    self.target = opp.pos;
+    self.speed = " 100";
+    self.currAcc = 100;
+    self.attacking = true;
+}
 
-// Point target(Point opponent, Point chk) {
-//     // if the opponent directly before us, target them
-//     int oppAngle = todo
-//     if (abs(oppAngle) >= 4)
-//         return chk;
-// }
+bool intersectsCircle(const Point& circle, int radius,
+                      const Degree& moveAngle, const Point& start) {
+    int dist = distance(circle, start);
+    const Point p = movePoint(dist, degToRad(moveAngle));
+    int projectionDist = distance(circle, p);
+    return projectionDist <= radius;
+}
+
+void targetChk(const GameState& s, OwnPod& self, int chkId) {
+    if (chkId == -1)
+        chkId = self.chkId;
+    Degree inertia = inertiaAngle(s.chks[chkId].first, self,
+                                  s.chks[chkId].first);
+    assert (abs(inertia.val) <= 90);
+    self.target = shiftByRad(self.prevPos, s.chks[chkId].first, degToRad(inertia));
+    self.currAcc = bisectAccel(self.chkDist,
+                               self.chkAngle+inertia,
+                               self.speedEstim // poor man's speed, it doesn't count inertia
+                               );
+    self.speed = " " + to_string(self.currAcc);
+    self.attacking = false;
+}
+
+Degree vectorAngle(const Point& vec) {
+    if (vec.x == 0)
+        return {0};
+    else
+        return radToDeg(atanf(vec.y/vec.x));
+}
+
+void defend(const GameState s, OwnPod& self, int defendee) {
+    for (const OppPod& opp : s.opp) {
+        if (intersectsCircle(s.chks[defendee].first, chkPointRadius,
+                             opp.moveAngle, opp.pos)) {
+            targetOpp(self, opp);
+            return;
+        }
+    }
+    targetChk(s, self, defendee);
+}
 
 int main() {
     GameState s;
@@ -421,8 +462,10 @@ int main() {
                 self.speedEstim = distance(self.prevPos, self.pos);
             }
         }
-        for (OppPod& opp : s.opp)
+        for (OppPod& opp : s.opp) {
             opp.speedEstim  = distance(opp.prevPos, opp.pos);
+            opp.moveAngle = vectorAngle(opp.pos - opp.prevPos);
+        }
 
         for (OwnPod& self : s.self) {
             Maybe<OppPod> opp = canShieldOpponent(s, self);
@@ -435,24 +478,10 @@ int main() {
             }
 
             opp = canHitOpponent(s, self);
-            if (opp.Just && rounds >= 5) {
-                self.target = opp.val.pos;
-                self.speed = " 100";
-                self.currAcc = 100;
-                self.attacking = true;
-                continue;
-            } else {
-                Degree inertia = inertiaAngle(s.chks[self.chkId].first, self,
-                                              s.chks[self.chkId].first);
-                assert (abs(inertia.val) <= 90);
-                self.target = shiftByRad(self.prevPos, s.chks[self.chkId].first, degToRad(inertia));
-                self.currAcc = bisectAccel(self.chkDist,
-                                           self.chkAngle+inertia,
-                                           self.speedEstim // poor man's speed, it doesn't count inertia
-                                           );
-                self.speed = " " + to_string(self.currAcc);
-                self.attacking = false;
-            }
+            if (opp.Just && rounds >= 5)
+                targetOpp(self, opp.val);
+            else
+                targetChk(s, self, -1);
         }
 
         for (OwnPod& self : s.self) {
