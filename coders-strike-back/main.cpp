@@ -4,13 +4,14 @@
 #include <cassert>
 #include <utility>
 #include <cmath>
-#include <stdlib.h>
+#include <array>
 
 using namespace std;
 using uint = unsigned;
 
 const unsigned short chkPointRadius = 600,
-    carRadius = 400;
+    carRadius = 400,
+    numPlayers = 2;
 
 template<typename T>
 struct NumWrapper {
@@ -93,7 +94,7 @@ struct OwnPod {
         speedEstim; // it's a substract of prev and curr distance, don't trust too much
     Degree globAngle, // 0..360° with Y flipped, i.e. 90° is facing down
         chkAngle; // NOTE: it's -180..180, negative is left angle
-    vector<int> speedRelToOpp, // speed relative to opponent by index
+    array<int, numPlayers> speedRelToOpp, // speed relative to opponent by index
         prevOppDist,
         oppDist;
     string speed;
@@ -116,8 +117,8 @@ struct OwnPod {
 struct GameState {
     vector<pair<Point,int>> chks;
     bool firstRun = true;
-    vector<OppPod> opp;
-    vector<OwnPod> self;
+    array<OppPod, numPlayers> opp;
+    array<OwnPod, numPlayers> self;
 
     friend ostream& operator<<(ostream& os, const GameState& s) {
         for (uint i=0; i < s.chks.size(); ++i)
@@ -403,13 +404,6 @@ void defend(const GameState s, OwnPod& self, int defendee) {
 
 int main() {
     GameState s;
-    s.self = vector<OwnPod>(2);
-    s.opp  = vector<OppPod>(2);
-    for (OwnPod& self : s.self) {
-        self.speedRelToOpp   = vector<int>(s.opp.size());
-        self.prevOppDist     = vector<int>(s.opp.size());
-        self.oppDist         = vector<int>(s.opp.size());
-    }
     unsigned short rounds = 0,
         laps, checkAmount;
     cin >> laps >> checkAmount;
