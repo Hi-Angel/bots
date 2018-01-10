@@ -210,7 +210,7 @@ constexpr bool isCirclesIntersect(uint rad1, uint rad2, uint distance) {
 
 template<typename Pod1, typename Pod2>
 bool doCarsCollide(Pod1 pod1, Pod2 pod2) {
-    // if (pod2.speedEstim + pod1.speedEstim <= 400) {
+    if (pod2.speedEstim + pod1.speedEstim <= 400) {
     Point pos1 = pod1.pos + movePoint(pod1.speedEstim, degToRad(pod1.globAngle)),
         pos2 = pod2.pos + movePoint(pod2.speedEstim, degToRad(pod2.globAngle));
         // cerr << "currPos1 " << pod1.pos
@@ -219,24 +219,19 @@ bool doCarsCollide(Pod1 pod1, Pod2 pod2) {
         //      << " oughtPos2 " << pos2
         //      << " distance " << distance(pos1, pos2) << endl;
         return isCirclesIntersect(carRadius, carRadius, distance(pos1, pos2));
-    // } else {
-    //     // Every player turn car makes many smaller steps per speed, and there's a
-    //     // possibility cars miss each another. The constant I use is particular.
-    //     const int stepsPerTurn = 10,
-    //         speedEstim1 = pod1.speedEstim / stepsPerTurn,
-    //         speedEstim2 = pod2.speedEstim / stepsPerTurn;
-    //     for (uint i=0; i<stepsPerTurn; ++i) {
-    //         const Point pos1 = pod1.pos + movePoint(speedEstim1*i, pod1.globAngle),
-    //             pos2 = pod2.pos + movePoint(speedEstim2*i, pod2.globAngle);
-    //     cerr << "currPos1 " << pod1.pos
-    //          << " currPos2 " << pod2.pos
-    //          << " oughtPos1 " << pos1
-    //          << " oughtPos2 " << pos2
-    //          << " distance " << distance(pos1, pos2) << endl;
-    //         if (isCirclesIntersect(carRadius, carRadius, distance(pos1, pos2)))
-    //             return true;
-    //     }
-    // }
+    } else {
+        // Every player turn car makes many smaller steps per speed, and there's a
+        // possibility cars miss each another. The constant I use is particular.
+        const int stepsPerTurn = 10,
+            speedEstim1 = pod1.speedEstim / stepsPerTurn,
+            speedEstim2 = pod2.speedEstim / stepsPerTurn;
+        for (uint i=0; i<stepsPerTurn; ++i) {
+            const Point pos1 = pod1.pos + movePoint(speedEstim1*i, degToRad(pod1.globAngle)),
+                pos2 = pod2.pos + movePoint(speedEstim2*i, degToRad(pod2.globAngle));
+            if (isCirclesIntersect(carRadius, carRadius, distance(pos1, pos2)))
+                return true;
+        }
+    }
     return false;
 }
 
