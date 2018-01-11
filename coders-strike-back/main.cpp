@@ -42,6 +42,12 @@ struct NumWrapper {
     NumWrapper operator+(const NumWrapper rhs) const {
         return {val + rhs.val};
     }
+    bool operator==(const NumWrapper rhs) const {
+        return {val == rhs.val};
+    }
+    bool operator==(const T rhs) const {
+        return {val == rhs};
+    }
 };
 using Degree = NumWrapper<int>;
 using Radian = NumWrapper<float>;
@@ -284,11 +290,12 @@ const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self,
             //      << " oppAngle " << opp.globAngle
             //      << " abs(self.globAngle - opp.globAngle) " << abs((self.globAngle - opp.globAngle).val)
             //     << endl;
-            if (doCarsCollide(opp, self) && self.speedRelToOpp[mbopp] >= 140) {
-                if (!sameFocusedDirection(self.globAngle, opp.globAngle))
+            if (doCarsCollide(opp, self) && self.speedRelToOpp[i] >= 140) {
+                if (!sameFocusedDirection(self.globAngle, opp.globAngle)) {
                     return {true, opp};
-                else if (isOppBehind(self, opp))
+                } else if (isOppBehind(self, opp)) {
                     return {true, opp};
+                }
             }
         }
     }
