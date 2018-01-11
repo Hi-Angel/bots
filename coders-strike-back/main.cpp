@@ -308,7 +308,7 @@ Degree inertiaAngle(const Point& chkPoint, const OwnPod& self, const Point& targ
 // but I don't know them offhand, and for now I consider bisection good enough. I may
 // possibly change my mind though.
 int bisectAccel(int carDist, const Degree& carAngle, int speed) {
-    // terms: "adjacent len" is a "speed" from a trigonometric POV
+    // function strives to minimize length to chk by picking appropriate accel
     int bottom = 0, top = 100;
     float bottomLen = oppositeLen(carDist, bottom+speed, degToRad(carAngle)),
         topLen = oppositeLen(carDist, top+speed, degToRad(carAngle));
@@ -362,11 +362,25 @@ void targetOpp(OwnPod& self, const OppPod& opp) {
 }
 
 bool intersectsCircle(const Point& circle, int radius,
-                      const Degree& moveAngle, const Point& start) {
-    int dist = distance(circle, start);
-    const Point p = movePoint(dist, degToRad(moveAngle));
+                      const Degree& moveAngle, const Point& movee) {
+    int dist = distance(circle, movee);
+    const Point p = movee + movePoint(dist, degToRad(moveAngle));
     int projectionDist = distance(circle, p);
+    // cerr
+    //     << "moveAngle " << moveAngle
+    //     << " movee " << movee
+    //     << " dist " << dist
+    //     << " projectionDist " << projectionDist << endl;
     return projectionDist <= radius;
+}
+
+Degree chkAngle(const GameState& s, const OwnPod& self, uint chkId) {
+    Point faceEdge   = self.pos + movePoint(carRadius, degToRad(self.globAngle));
+    const Point& chk = s.chks[chkId].first;
+    float hyp        = distance(faceEdge, chk);
+    return isLeftToLine(self.pos, chk, faceEdge)
+        ? -angleC(self.chkDist, carRadius, hyp)
+        : angleC(self.chkDist, carRadius, hyp);
 }
 
 void targetChk(const GameState& s, OwnPod& self, int chkId) {
@@ -374,10 +388,18 @@ void targetChk(const GameState& s, OwnPod& self, int chkId) {
         chkId = self.chkId;
     Degree inertia = inertiaAngle(s.chks[chkId].first, self,
                                   s.chks[chkId].first);
-    assert (abs(inertia.val) <= 90);
     self.target = shiftByRad(self.prevPos, s.chks[chkId].first, degToRad(inertia));
-    self.currAcc = bisectAccel(self.chkDist,
-                               self.chkAngle+inertia,
+    int dist;
+    Degree angle;
+    if (chkId == -1) {
+        dist = {self.chkAngle.val};
+        angle = self.chkAngle+inertia;
+    } else {
+        dist = distance(self.pos, s.chks[chkId].first);
+        angle = chkAngle(s, self, chkId)+inertia;
+    }
+    self.currAcc = bisectAccel(dist,
+                               angle,
                                self.speedEstim // poor man's speed, it doesn't count inertia
                                );
     self.speed = " " + to_string(self.currAcc);
@@ -385,17 +407,20 @@ void targetChk(const GameState& s, OwnPod& self, int chkId) {
 }
 
 Degree vectorAngle(const Point& vec) {
-    cerr << vec << endl;
     if (vec.x == 0)
         return {0};
     Degree ret = radToDeg(atanf((float)vec.y/vec.x));
-    if (ret.val < 0 && vec.y < 0) // quadrant Ⅲ
-        ret.val = 180 - ret.val; // it actually adds
-    else if (ret.val < 0) // quadrant Ⅱ
+    if (vec.x < 0 && vec.y < 0) // quadrant Ⅲ
+        ret.val = 180 + ret.val;
+    else if (vec.x < 0) // quadrant Ⅱ
         ret.val = 180 + ret.val; // it actually substracts
     else if (vec.y < 0) // quadrant Ⅳ
-        ret.val = 270 + (90 - ret.val);
+        ret.val = 270 + (90 + ret.val); // it actually substracts
     return ret;
+}
+
+int findDefendee() {
+    return 1; // todo
 }
 
 void defend(const GameState s, OwnPod& self, int defendee) {
@@ -412,7 +437,8 @@ void defend(const GameState s, OwnPod& self, int defendee) {
 int main() {
     GameState s;
     unsigned short rounds = 0,
-        laps, checkAmount;
+        laps, checkAmount,
+        defender = 1;
     cin >> laps >> checkAmount;
     for (uint i = 0; i < checkAmount; ++i) {
         Point aChk;
@@ -429,11 +455,7 @@ int main() {
                 >> self.globAngle >> self.chkId;
             const Point& chk = s.chks[self.chkId].first;
             self.chkDist   = distance(self.pos, chk);
-            Point faceEdge = self.pos + movePoint(carRadius, degToRad(self.globAngle));
-            float hyp      = distance(faceEdge, chk);
-            self.chkAngle  = isLeftToLine(self.pos, chk, faceEdge)
-                ? -angleC(self.chkDist, carRadius, hyp)
-                : angleC(self.chkDist, carRadius, hyp);
+            self.chkAngle = chkAngle(s, self, self.chkId);
         }
         for (OppPod& opp : s.opp)
             cin >> opp.pos.x >> opp.pos.y >> unused >> unused
@@ -468,7 +490,14 @@ int main() {
             opp.moveAngle = vectorAngle(opp.pos - opp.prevPos);
         }
 
-        for (OwnPod& self : s.self) {
+        // the action
+        for (uint i = 0; i < s.self.size(); ++i) {
+            OwnPod& self = s.self[i];
+            if (i == defender) {
+                int defendee = findDefendee();
+                defend(s, self, defendee);
+                continue;
+            }
             Maybe<OppPod> opp = canShieldOpponent(s, self);
             if (opp.Just && rounds >= 5) {
                 self.target = opp.val.pos;
