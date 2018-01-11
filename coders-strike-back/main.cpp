@@ -262,20 +262,31 @@ const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
     return {false, {}};
 }
 
-const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self) {
-    for (uint i=0; i < s.opp.size(); ++i) {
-        const OppPod& opp = s.opp[i];
-
-        // cerr << "doCarsCollide(opp, self) " << doCarsCollide(opp, self)
-        //     << " self.speedRelToOpp[i] " << self.speedRelToOpp[i]
-        //      << " abs(oppAngle) " << abs(oppAngle)
-        //      << " abs(self.globAngle - opp.globAngle) " << abs(self.globAngle - opp.globAngle)
-        //     << endl;
-        if (doCarsCollide(opp, self) && self.speedRelToOpp[i] >= 140) {
+const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self,
+                                      const int mbopp) {
+    if (mbopp != -1) {
+        const OppPod& opp = s.opp[mbopp];
+        if (doCarsCollide(opp, self) && self.speedRelToOpp[mbopp] >= 140) {
             if (!sameFocusedDirection(self.globAngle, opp.globAngle))
                 return {true, opp};
             else if (isOppBehind(self, opp))
                 return {true, opp};
+        }
+    } else {
+        for (uint i=0; i < s.opp.size(); ++i) {
+            const OppPod& opp = s.opp[i];
+
+            // cerr << "doCarsCollide(opp, self) " << doCarsCollide(opp, self)
+            //     << " self.speedRelToOpp[i] " << self.speedRelToOpp[i]
+            //      << " oppAngle " << opp.globAngle
+            //      << " abs(self.globAngle - opp.globAngle) " << abs((self.globAngle - opp.globAngle).val)
+            //     << endl;
+            if (doCarsCollide(opp, self) && self.speedRelToOpp[mbopp] >= 140) {
+                if (!sameFocusedDirection(self.globAngle, opp.globAngle))
+                    return {true, opp};
+                else if (isOppBehind(self, opp))
+                    return {true, opp};
+            }
         }
     }
     return {false, {}};
@@ -359,6 +370,12 @@ Point shiftByRad(const Point& origin, const Point& edge, Radian shiftRad) {
     p += origin;
     return p;
 }
+void shieldOpp(OwnPod& self, const OppPod& opp) {
+    self.target = opp.pos;
+    self.speed = " SHIELD";
+    self.currAcc = 0;
+    self.attacking = true;
+}
 
 void targetOpp(OwnPod& self, const OppPod& opp) {
     self.target = opp.oughtPos;
@@ -431,11 +448,16 @@ int findDefendee() {
 }
 
 void defend(const GameState s, OwnPod& self, int defendee) {
-    for (const OppPod& opp : s.opp) {
+    for (uint i=0; i < s.opp.size(); ++i) {
+        const OppPod& opp = s.opp[i];
         // if (intersectsCircle(s.chks[defendee].first, chkPointRadius,
         //                      opp.moveAngle, opp.pos)) {
+        Maybe<OppPod> maybe = canShieldOpponent(s, self, i);
         if (opp.chkId == defendee) {
-            targetOpp(self, opp);
+            if (maybe.Just)
+                shieldOpp(self,opp);
+            else
+                targetOpp(self, opp);
             return;
         }
     }
@@ -507,12 +529,9 @@ int main() {
                 defend(s, self, defendee);
                 continue;
             }
-            Maybe<OppPod> opp = canShieldOpponent(s, self);
+            Maybe<OppPod> opp = canShieldOpponent(s, self, -1);
             if (opp.Just && rounds >= 5) {
-                self.target = opp.val.pos;
-                self.speed = " SHIELD";
-                self.currAcc = 0;
-                self.attacking = true;
+                shieldOpp(self, opp.val);
                 continue;
             }
 
