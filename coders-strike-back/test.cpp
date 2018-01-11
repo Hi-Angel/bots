@@ -72,9 +72,23 @@ void test_doCarsCollide() {
     DO_TEST(doCarsCollide(opp, self));
 }
 
+void test_chkAngle() {
+    OwnPod self;
+    Point chk;
+
+    // test1
+    self.pos = {3614, 6987};
+    self.chkDist = 11008;
+    self.globAngle = 143;
+    chk = {14600,7687};
+    Degree deg1 = chkAngle(chk, self);
+    DO_TEST(deg1.val != 0);
+}
+
 int main() {
     test_vectorAngle();
     test_canShieldOpponent();
     test_doCarsCollide();
+    test_chkAngle();
     cout << "testing finished" << endl;
 }

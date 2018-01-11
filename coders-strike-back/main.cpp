@@ -171,7 +171,7 @@ constexpr Degree radToDeg(float rad) { return {rad*(180/M_PI)}; }
 Degree angleC(float a, float b, float c) {
     if (!(a && b && c)) // there's no angle, and calculations don't handle it
         return {0};
-    float cos_c = (a*a + b*b - c*c) / (float)(2*a*b);
+    float cos_c = abs((a*a + b*b - c*c) / (float)(2*a*b));
     if (cos_c > 1 || cos_c < 0) // calculations sometimes fail, idk why.
         return {0};
     else
@@ -502,7 +502,7 @@ int main() {
                 >> self.globAngle >> self.chkId;
             const Point& chk = s.chks[self.chkId].first;
             self.chkDist  = distance(self.pos, chk);
-            self.chkAngle = chkAngle(s.chks[self.chkId].first, self);
+            self.chkAngle = chkAngle(chk, self);
         }
         for (OppPod& opp : s.opp)
             cin >> opp.pos.x >> opp.pos.y >> unused >> unused
