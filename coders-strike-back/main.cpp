@@ -74,7 +74,7 @@ struct Maybe {
 };
 
 struct OppPod {
-    Point pos, prevPos;
+    Point pos, prevPos, oughtPos;
     Degree globAngle,
         moveAngle;
     int speedEstim;
@@ -355,7 +355,7 @@ Point shiftByRad(const Point& origin, const Point& edge, Radian shiftRad) {
 }
 
 void targetOpp(OwnPod& self, const OppPod& opp) {
-    self.target = opp.pos;
+    self.target = opp.oughtPos;
     self.speed = " 100";
     self.currAcc = 100;
     self.attacking = true;
@@ -488,6 +488,7 @@ int main() {
         for (OppPod& opp : s.opp) {
             opp.speedEstim  = distance(opp.prevPos, opp.pos);
             opp.moveAngle = vectorAngle(opp.pos - opp.prevPos);
+            opp.oughtPos = opp.pos + movePoint(opp.speedEstim, degToRad(opp.moveAngle));
         }
 
         // the action
