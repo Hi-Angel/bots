@@ -407,9 +407,8 @@ bool intersectsCircle(const Point& circle, int radius,
     return projectionDist <= radius;
 }
 
-Degree chkAngle(const GameState& s, const OwnPod& self, uint chkId) {
+Degree chkAngle(const Point& chk, const OwnPod& self) {
     Point faceEdge   = self.pos + movePoint(carRadius, degToRad(self.globAngle));
-    const Point& chk = s.chks[chkId].first;
     float hyp        = distance(faceEdge, chk);
     return isLeftToLine(self.pos, chk, faceEdge)
         ? -angleC(self.chkDist, carRadius, hyp)
@@ -429,7 +428,7 @@ void targetChk(const GameState& s, OwnPod& self, int chkId) {
         angle = self.chkAngle+inertia;
     } else {
         dist = distance(self.pos, s.chks[chkId].first);
-        angle = chkAngle(s, self, chkId)+inertia;
+        angle = chkAngle(s.chks[chkId].first, self)+inertia;
     }
     self.currAcc = bisectAccel(dist,
                                angle,
@@ -502,8 +501,8 @@ int main() {
             cin >> self.pos.x >> self.pos.y >> unused >> unused
                 >> self.globAngle >> self.chkId;
             const Point& chk = s.chks[self.chkId].first;
-            self.chkDist   = distance(self.pos, chk);
-            self.chkAngle = chkAngle(s, self, self.chkId);
+            self.chkDist  = distance(self.pos, chk);
+            self.chkAngle = chkAngle(s.chks[self.chkId].first, self);
         }
         for (OppPod& opp : s.opp)
             cin >> opp.pos.x >> opp.pos.y >> unused >> unused
