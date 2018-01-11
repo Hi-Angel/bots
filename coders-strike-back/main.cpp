@@ -16,6 +16,9 @@ const unsigned short chkPointRadius = 600,
 template<typename T>
 struct NumWrapper {
     T val;
+    constexpr NumWrapper() {}
+    constexpr NumWrapper(T v) : val(v) {}
+    constexpr NumWrapper(const NumWrapper& w) : val(w.val) {}
     friend ostream& operator<<(ostream& os, const NumWrapper& w) {
         os << w.val;
         return os;
@@ -325,7 +328,7 @@ int bisectAccel(const int carDist, const Degree& carAngle, int speed, bool chk) 
         // it's hard to describe situation, but in immediate closeness to checkpoint
         // a car might go to an orbit. It's long to solve correctly, nor I see
         // benefits of doing so.
-        top = (chk && carDist <= chkPointRadius+200 && speed >= 200)? 30 : 100;
+        top = (chk && carDist <= chkPointRadius+600 && speed >= 100)? 10 : 100;
     float bottomLen = oppositeLen(carDist, bottom+speed, degToRad(carAngle)),
         topLen = oppositeLen(carDist, top+speed, degToRad(carAngle));
     for (;;) {
@@ -431,8 +434,14 @@ void targetChk(const GameState& s, OwnPod& self, int chkId) {
 }
 
 Degree vectorAngle(const Point& vec) {
-    if (vec.x == 0)
-        return {0};
+    if (vec.x == 0) // special cases
+        return (vec.y > 0)? Degree(90)
+            : (vec.y == 0)? Degree(0)
+            : Degree(270);
+    else if (vec.y == 0) // special cases
+        return (vec.x > 0)? Degree(0)
+            : (vec.x == 0)? Degree(0)
+            : Degree(180);
     Degree ret = radToDeg(atanf((float)vec.y/vec.x));
     if (vec.x < 0 && vec.y < 0) // quadrant Ⅲ
         ret.val = 180 + ret.val;
@@ -464,11 +473,13 @@ void defend(const GameState s, OwnPod& self, int defendee) {
     targetChk(s, self, defendee);
 }
 
+#ifndef TESTS
+
 int main() {
     GameState s;
     unsigned short rounds = 0,
         laps, checkAmount,
-        defender = 1;
+        defender = 2; // disabled
     cin >> laps >> checkAmount;
     for (uint i = 0; i < checkAmount; ++i) {
         Point aChk;
@@ -574,3 +585,5 @@ int main() {
 // todo: 2. find a way to calculate left and right edges of spheres to β) to target
 // an opponent withing the check, and γ) to calculate left/right edges of an opponent
 // with regard to its speed to figure if we can hit it.
+
+#endif
