@@ -77,7 +77,7 @@ struct OppPod {
     Point pos, prevPos, oughtPos;
     Degree globAngle,
         moveAngle;
-    int speedEstim;
+    int speedEstim, chkId;
 
     friend ostream& operator<<(ostream& os, const OppPod& p) {
         os << "pos{" << p.pos << "}, prevPos{" << p.prevPos << "}";
@@ -163,7 +163,7 @@ Degree angleC(float a, float b, float c) {
     if (!(a && b && c)) // there's no angle, and calculations don't handle it
         return {0};
     float cos_c = (a*a + b*b - c*c) / (float)(2*a*b);
-    if (cos_c > 1)
+    if (cos_c > 1 || cos_c < 0) // calculations sometimes fail, idk why.
         return {0};
     else
         return radToDeg(acosf(cos_c));
@@ -307,14 +307,20 @@ Degree inertiaAngle(const Point& chkPoint, const OwnPod& self, const Point& targ
 // or right? To get the optimum you'd need to use optimization techniques instead,
 // but I don't know them offhand, and for now I consider bisection good enough. I may
 // possibly change my mind though.
-int bisectAccel(int carDist, const Degree& carAngle, int speed) {
+int bisectAccel(const int carDist, const Degree& carAngle, int speed, bool chk) {
+    assert(carAngle.val <= 360);
     // function strives to minimize length to chk by picking appropriate accel
-    int bottom = 0, top = 100;
+    int bottom = 0,
+        // it's hard to describe situation, but in immediate closeness to checkpoint
+        // a car might go to an orbit. It's long to solve correctly, nor I see
+        // benefits of doing so.
+        top = (chk && carDist <= chkPointRadius+200 && speed >= 200)? 30 : 100;
     float bottomLen = oppositeLen(carDist, bottom+speed, degToRad(carAngle)),
         topLen = oppositeLen(carDist, top+speed, degToRad(carAngle));
     for (;;) {
         int nextAdjLen = bottom + (top - bottom) / 2;
         float oppLen = oppositeLen(carDist, nextAdjLen+speed, degToRad(carAngle));
+        // cerr << "oppLen " << oppLen << " accel " << nextAdjLen << " carangle " << carAngle << endl;
         if (nextAdjLen <= bottom+1 || nextAdjLen >= top-1) { // technically, it can be e.g.either bottom or bottom+1
             if (bottomLen < topLen)
                 return (bottomLen < oppLen)? bottom : nextAdjLen;
@@ -400,7 +406,8 @@ void targetChk(const GameState& s, OwnPod& self, int chkId) {
     }
     self.currAcc = bisectAccel(dist,
                                angle,
-                               self.speedEstim // poor man's speed, it doesn't count inertia
+                               self.speedEstim, // poor man's speed, it doesn't count inertia
+                               true
                                );
     self.speed = " " + to_string(self.currAcc);
     self.attacking = false;
@@ -425,8 +432,9 @@ int findDefendee() {
 
 void defend(const GameState s, OwnPod& self, int defendee) {
     for (const OppPod& opp : s.opp) {
-        if (intersectsCircle(s.chks[defendee].first, chkPointRadius,
-                             opp.moveAngle, opp.pos)) {
+        // if (intersectsCircle(s.chks[defendee].first, chkPointRadius,
+        //                      opp.moveAngle, opp.pos)) {
+        if (opp.chkId == defendee) {
             targetOpp(self, opp);
             return;
         }
@@ -459,7 +467,7 @@ int main() {
         }
         for (OppPod& opp : s.opp)
             cin >> opp.pos.x >> opp.pos.y >> unused >> unused
-                >> opp.globAngle >> unused;
+                >> opp.globAngle >> opp.chkId;
 
 
         if (s.firstRun) { // first round initialization
