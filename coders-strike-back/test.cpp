@@ -34,13 +34,13 @@ void test_canShieldOpponent() {
     self.speedRelToOpp[0] = 500;
     self.globAngle        = 45;
     self.speedEstim       = 400;
-    Maybe<OppPod> mb = canShieldOpponent(s, self, 0);
-    DO_TEST(mb.Just);
+    Maybe<OppPod> mb1 = canShieldOpponent(s, self, opp_i);
+    DO_TEST(mb1.Just);
 
     // test2, values depend on test1
     s.opp[opp_i].pos = {11003, 3776};
-    mb = canShieldOpponent(s, self, 0);
-    DO_TEST(!mb.Just);
+    Maybe<OppPod> mb2 = canShieldOpponent(s, self, opp_i);
+    DO_TEST(!mb2.Just);
 
     // test3
     s.opp[opp_i].pos = {11003, 3776};
@@ -50,8 +50,25 @@ void test_canShieldOpponent() {
     self.speedRelToOpp[0] = 447;
     self.globAngle = 133;
     self.speedEstim = 199;
-    mb = canShieldOpponent(s, self, 0);
-    DO_TEST(mb.Just);
+    Maybe<OppPod> mb3 = canShieldOpponent(s, self, opp_i);
+    DO_TEST(mb3.Just);
+
+    // test4
+    // this one is failing, and it seems the reason being that acc. to calculations
+    // pods pass each after another very closely, whereas they actually collide. It's
+    // hard to say if it's an inaccuracy in calculations, or rather that the game
+    // considers path of every turn as whole. In any case I think the right way of
+    // dealing with that is using the later technique. Surprisingly, such accidents
+    // aren't rare.
+    s.opp[opp_i].pos = {6839, 6605};
+    s.opp[opp_i].speedEstim = 511;
+    s.opp[opp_i].globAngle = 9;
+    self.pos = {7560, 5681};
+    self.speedRelToOpp[opp_i] = 673;
+    self.globAngle = 154;
+    self.speedEstim = 409;
+    Maybe<OppPod> mb4 = canShieldOpponent(s, self, opp_i);
+    DO_TEST(mb4.Just);
 }
 
 void test_doCarsCollide() {

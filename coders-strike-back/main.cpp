@@ -285,11 +285,6 @@ const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self,
         for (uint i=0; i < s.opp.size(); ++i) {
             const OppPod& opp = s.opp[i];
 
-            // cerr << "doCarsCollide(opp, self) " << doCarsCollide(opp, self)
-            //     << " self.speedRelToOpp[i] " << self.speedRelToOpp[i]
-            //      << " oppAngle " << opp.globAngle
-            //      << " abs(self.globAngle - opp.globAngle) " << abs((self.globAngle - opp.globAngle).val)
-            //     << endl;
             if (doCarsCollide(opp, self) && self.speedRelToOpp[i] >= 140) {
                 if (!sameFocusedDirection(self.globAngle, opp.globAngle)) {
                     return {true, opp};
@@ -528,7 +523,7 @@ int main() {
         for (OwnPod& self : s.self) {
             for (uint i=0; i < s.opp.size(); ++i) {
                 self.oppDist[i] = distance(s.opp[i].pos, self.pos);
-                self.speedRelToOpp[i] = abs(self.prevOppDist[i]) - abs(self.oppDist[i]);
+                self.speedRelToOpp[i] = self.prevOppDist[i] - self.oppDist[i];
                 self.speedEstim = distance(self.prevPos, self.pos);
             }
         }
