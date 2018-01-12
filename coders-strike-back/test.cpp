@@ -159,11 +159,17 @@ void test_chkAngle() {
     DO_TEST(deg1.val != 0);
 }
 
+void test_angleC() {
+    float a = 1, b = 1.41, c = 2.24;
+    DO_TEST(angleC(a, b, c).val == 136);
+}
+
 int main() {
     test_vectorAngle();
     test_canShieldOpponent();
     test_doCarsCollide();
     test_chkAngle();
     test_movePoint();
+    test_angleC();
     cout << "testing finished" << endl;
 }

@@ -171,8 +171,8 @@ constexpr Degree radToDeg(float rad) { return {rad*(180/M_PI)}; }
 Degree angleC(float a, float b, float c) {
     if (!(a && b && c)) // there's no angle, and calculations don't handle it
         return {0};
-    float cos_c = abs((a*a + b*b - c*c) / (float)(2*a*b));
-    if (cos_c > 1 || cos_c < 0) // calculations sometimes fail, idk why.
+    float cos_c = (a*a + b*b - c*c) / (float)(2*a*b);
+    if (cos_c > 1) // calculations sometimes fail, idk why.
         return {0};
     else
         return radToDeg(acosf(cos_c));
@@ -409,7 +409,6 @@ void targetChk(const GameState& s, OwnPod& self, int chkId) {
     }
     Degree inertia = inertiaAngle(s.chks[chkId].first, self,
                                   s.chks[chkId].first);
-    angle = angle+inertia;
     self.target = shiftByRad(self.prevPos, s.chks[chkId].first, degToRad(inertia));
     self.currAcc = bisectAccel(dist,
                                angle,
