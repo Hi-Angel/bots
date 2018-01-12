@@ -198,7 +198,6 @@ bool isLeftToLine(const Point& start, const Point& end, const Point& q) {
 // (the one with flipped Y)
 Point movePoint(int len, const Radian& globAngle) {
     Point ret = {len * cosf(globAngle.val), len * sinf(globAngle.val)};
-    // cerr << "point moved: " << ret << " globAngle: " << globAngle.val << endl;
     return ret;
 }
 
@@ -228,11 +227,6 @@ bool doCarsCollide(Pod1 pod1, Pod2 pod2) {
     if (pod2.speedEstim + pod1.speedEstim <= 400) {
     Point pos1 = pod1.pos + movePoint(pod1.speedEstim, degToRad(pod1.globAngle)),
         pos2 = pod2.pos + movePoint(pod2.speedEstim, degToRad(pod2.globAngle));
-        // cerr << "currPos1 " << pod1.pos
-        //      << " currPos2 " << pod2.pos
-        //      << " oughtPos1 " << pos1
-        //      << " oughtPos2 " << pos2
-        //      << " distance " << distance(pos1, pos2) << endl;
         return isCirclesIntersect(carRadius, carRadius, distance(pos1, pos2));
     } else {
         // Every player turn car makes many smaller steps per speed, and there's a
@@ -306,12 +300,6 @@ float oppositeLen(float aLen, float bLen, const Radian& abAngle) {
 // returns the checkpoint angle between prev and curr positions. Negative if
 // counterclockwise, positive otherwise.
 Degree inertiaAngle(const Point& chkPoint, const OwnPod& self, const Point& target) {
-    // cerr << " distance(s.oughtPos, s.opp.pos): " << distance(s.opp.pos, s.oughtPos)
-    //      << " distance(s.opp.pos, s.currPos): " << distance(s.opp.pos, s.currPos)
-    //      << " distance(s.oughtPos, s.currPos): " << distance(s.oughtPos, s.currPos) << endl;
-    // int inertia = angleC(distance(s.opp.pos, s.chkPoint), // s.speed,
-    //                      distance(s.opp.pos, s.currPos),
-    //                      distance(s.chkPoint, s.currPos));
     Degree inertia = angleC(distance(target, self.pos), // s.speed,
                             distance(target, self.prevPos),
                             distance(self.prevPos, self.pos));
@@ -330,13 +318,14 @@ int bisectAccel(const int carDist, const Degree& carAngle, int speed, bool chk) 
         // it's hard to describe situation, but in immediate closeness to checkpoint
         // a car might go to an orbit. It's long to solve correctly, nor I see
         // benefits of doing so.
-        top = (chk && carDist <= chkPointRadius+600 && speed >= 100)? 10 : 100;
+        // added later: the workaround for corner case makes more harm in general, I
+        // simplified it.
+        top = (chk && carDist <= chkPointRadius+100 && speed >= 100)? 10 : 100;
     float bottomLen = oppositeLen(carDist, bottom+speed, degToRad(carAngle)),
         topLen = oppositeLen(carDist, top+speed, degToRad(carAngle));
     for (;;) {
         int nextAdjLen = bottom + (top - bottom) / 2;
         float oppLen = oppositeLen(carDist, nextAdjLen+speed, degToRad(carAngle));
-        // cerr << "oppLen " << oppLen << " accel " << nextAdjLen << " carangle " << carAngle << endl;
         if (nextAdjLen <= bottom+1 || nextAdjLen >= top-1) { // technically, it can be e.g.either bottom or bottom+1
             if (bottomLen < topLen)
                 return (bottomLen < oppLen)? bottom : nextAdjLen;
@@ -394,11 +383,6 @@ bool intersectsCircle(const Point& circle, int radius,
     int dist = distance(circle, movee);
     const Point p = movee + movePoint(dist, degToRad(moveAngle));
     int projectionDist = distance(circle, p);
-    // cerr
-    //     << "moveAngle " << moveAngle
-    //     << " movee " << movee
-    //     << " dist " << dist
-    //     << " projectionDist " << projectionDist << endl;
     return projectionDist <= radius;
 }
 
@@ -411,20 +395,20 @@ Degree chkAngle(const Point& chk, const OwnPod& self) {
 }
 
 void targetChk(const GameState& s, OwnPod& self, int chkId) {
-    if (chkId == -1)
-        chkId = self.chkId;
-    Degree inertia = inertiaAngle(s.chks[chkId].first, self,
-                                  s.chks[chkId].first);
-    self.target = shiftByRad(self.prevPos, s.chks[chkId].first, degToRad(inertia));
     int dist;
     Degree angle;
     if (chkId == -1) {
-        dist = {self.chkAngle.val};
-        angle = self.chkAngle+inertia;
+        chkId = self.chkId;
+        dist = self.chkDist;
+        angle = self.chkAngle;
     } else {
         dist = distance(self.pos, s.chks[chkId].first);
-        angle = chkAngle(s.chks[chkId].first, self)+inertia;
+        angle = chkAngle(s.chks[chkId].first, self);
     }
+    Degree inertia = inertiaAngle(s.chks[chkId].first, self,
+                                  s.chks[chkId].first);
+    angle = angle+inertia;
+    self.target = shiftByRad(self.prevPos, s.chks[chkId].first, degToRad(inertia));
     self.currAcc = bisectAccel(dist,
                                angle,
                                self.speedEstim, // poor man's speed, it doesn't count inertia

@@ -89,6 +89,63 @@ void test_doCarsCollide() {
     DO_TEST(doCarsCollide(opp, self));
 }
 
+void test_movePoint() {
+    // test right
+    Radian rad = 0;
+    Point p1 = movePoint(5, rad),
+        p2 = Point{5, 0};
+    DO_TEST(p1 == p2);
+
+    // test quadrant Ⅰ
+    rad = M_PI/4;
+    p1 = movePoint(5, rad),
+        p2 = Point{3, 3};
+    DO_TEST(p1 == p2);
+
+    // test up
+    rad = M_PI/2;
+    p1 = movePoint(5, rad),
+        p2 = Point{0, 5};
+    DO_TEST(p1 == p2);
+
+    // test quadrant Ⅱ
+    rad = M_PI/4 *3;
+    p1 = movePoint(5, rad);
+    p2 = Point{-3, 3};
+    DO_TEST(p1 == p2);
+
+    // test right
+    rad = M_PI;
+    p1 = movePoint(5, rad),
+        p2 = Point{-5, 0};
+    DO_TEST(p1 == p2);
+
+    // test quadrant Ⅲ
+    rad = M_PI/4 + M_PI;
+    p1 = movePoint(5, rad);
+    p2 = Point{-3, -3};
+    DO_TEST(p1 == p2);
+
+    // test down
+    rad = M_PI*1.5;
+    p1 = movePoint(5, rad),
+        p2 = Point{0, -5};
+    DO_TEST(p1 == p2);
+
+    // test quadrant Ⅳ
+    rad = M_PI/4 + M_PI*1.5;
+    p1 = movePoint(5, rad);
+    p2 = Point{3, -3};
+    DO_TEST(p1 == p2);
+}
+
+// void test_bisectSpeed() {
+//     int carDist = 5989,
+//         speed = 539;
+//     Degree deg = {24};
+//     DO_TEST(bisectAccel(carDist, deg, speed, true) == 0);
+// }
+
 void test_chkAngle() {
     OwnPod self;
     Point chk;
@@ -107,5 +164,6 @@ int main() {
     test_canShieldOpponent();
     test_doCarsCollide();
     test_chkAngle();
+    test_movePoint();
     cout << "testing finished" << endl;
 }
