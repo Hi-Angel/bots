@@ -387,6 +387,8 @@ bool intersectsCircle(const Point& circle, int radius,
 }
 
 Degree chkAngle(const Point& chk, const OwnPod& self) {
+    // todo: this doesn't seem to return more than 90°. Also nowatimes the purpose is
+    // dubious — I could as well use movement direction for the bisectSpeed()
     Point faceEdge   = self.pos + movePoint(carRadius, degToRad(self.globAngle));
     float hyp        = distance(faceEdge, chk);
     return isLeftToLine(self.pos, chk, faceEdge)
@@ -424,8 +426,7 @@ Degree vectorAngle(const Point& vec) {
             : (vec.y == 0)? Degree(0)
             : Degree(270);
     else if (vec.y == 0) // special cases
-        return (vec.x > 0)? Degree(0)
-            : (vec.x == 0)? Degree(0)
+        return (vec.x >= 0)? Degree(0)
             : Degree(180);
     Degree ret = radToDeg(atanf((float)vec.y/vec.x));
     if (vec.x < 0 && vec.y < 0) // quadrant Ⅲ
