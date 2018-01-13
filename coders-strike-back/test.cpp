@@ -36,13 +36,13 @@ void test_canShieldOpponent() {
     self.speedRelToOpp[0] = 500;
     self.globAngle        = 45;
     self.speedEstim       = 400;
-    Maybe<OppPod> mb1 = canShieldOpponent(s, self, opp_i);
-    DO_TEST(mb1.Just);
+    const OppPod* mb1 = canShieldOpponent(s, self, opp_i);
+    DO_TEST(mb1);
 
     // test2, values depend on test1
     s.opp[opp_i].pos = {11003, 3776};
-    Maybe<OppPod> mb2 = canShieldOpponent(s, self, opp_i);
-    DO_TEST(!mb2.Just);
+    const OppPod* mb2 = canShieldOpponent(s, self, opp_i);
+    DO_TEST(!mb2);
 
     // test3
     s.opp[opp_i].pos = {11003, 3776};
@@ -52,8 +52,8 @@ void test_canShieldOpponent() {
     self.speedRelToOpp[0] = 447;
     self.globAngle = 133;
     self.speedEstim = 199;
-    Maybe<OppPod> mb3 = canShieldOpponent(s, self, opp_i);
-    DO_TEST(mb3.Just);
+    const OppPod* mb3 = canShieldOpponent(s, self, opp_i);
+    DO_TEST(mb3);
 
     // test4
     // this one is failing, and it seems the reason being that acc. to calculations
@@ -69,8 +69,8 @@ void test_canShieldOpponent() {
     self.speedRelToOpp[opp_i] = 673;
     self.globAngle = 154;
     self.speedEstim = 409;
-    Maybe<OppPod> mb4 = canShieldOpponent(s, self, opp_i);
-    DO_TEST(mb4.Just);
+    const OppPod* mb4 = canShieldOpponent(s, self, opp_i);
+    DO_TEST(mb4);
 }
 
 void test_doCarsCollide() {

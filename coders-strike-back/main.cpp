@@ -258,39 +258,39 @@ inline bool sameFocusedDirection(const Degree& selfAngle, const Degree& oppAngle
     return abs((selfAngle - oppAngle).val) <= 29;
 }
 
-const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
+const OppPod* canHitOpponent(const GameState& s, const OwnPod& self) {
     for (uint i=0; i < s.opp.size(); ++i) {
         const OppPod& opp = s.opp[i];
         // if we target same check and I'm closer, ignoring opp is more profitable
         if (self.chkId == opp.chkId
             && self.chkDist < distance(opp.pos, s.chks[opp.chkId].first))
-            return {false, {}};
+            return 0;
         if (isDotInCircle(s.chks[self.chkId].first, chkPointRadius, opp.pos)
             && self.oppDist[i] <= carRadius*4)
-            return {true, opp};
+            return &opp;
         if (doCarsCollide(opp, self)) {
             if (!sameFocusedDirection(self.globAngle, opp.globAngle))
-                return {true, opp};
+                return &opp;
             else if (isOppBehind(self, opp))
-                return {true, opp};
+                return &opp;
         }
     }
-    return {false, {}};
+    return 0;
 }
 
-const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self,
+const OppPod* canShieldOpponent(const GameState& s, const OwnPod& self,
                                       const int mbopp) {
     if (mbopp != -1) {
         const OppPod& opp = s.opp[mbopp];
         // if we target same check and I'm closer, ignoring opp is more profitable
         if (self.chkId == opp.chkId
             && self.chkDist < distance(opp.pos, s.chks[opp.chkId].first))
-            return {false, {}};
+            return 0;
         if (doCarsCollide(opp, self) && self.speedRelToOpp[mbopp] >= 140) {
             if (!sameFocusedDirection(self.globAngle, opp.globAngle))
-                return {true, opp};
+                return &opp;
             else if (isOppBehind(self, opp))
-                return {true, opp};
+                return &opp;
         }
     } else {
         for (uint i=0; i < s.opp.size(); ++i) {
@@ -299,18 +299,18 @@ const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self,
             // if we target same check and I'm closer, ignoring opp is more profitable
             if (self.chkId == opp.chkId
                 && self.chkDist < distance(opp.pos, s.chks[opp.chkId].first))
-                return {false, {}};
+                return 0;
 
             if (doCarsCollide(opp, self) && self.speedRelToOpp[i] >= 140) {
                 if (!sameFocusedDirection(self.globAngle, opp.globAngle)) {
-                    return {true, opp};
+                    return &opp;
                 } else if (isOppBehind(self, opp)) {
-                    return {true, opp};
+                    return &opp;
                 }
             }
         }
     }
-    return {false, {}};
+    return 0;
 }
 
 float oppositeLen(float aLen, float bLen, const Radian& abAngle) {
@@ -473,9 +473,8 @@ void defend(const GameState s, OwnPod& self, int defendee) {
         //                      opp.moveAngle, opp.pos)) {
         // todo: canShieldOpponent now checks if you're closer to your next
         // checkpoint, not gonna work here.
-        Maybe<OppPod> maybe = canShieldOpponent(s, self, i);
         if (opp.chkId == defendee) {
-            if (maybe.Just)
+            if (canShieldOpponent(s, self, i))
                 shieldOpp(self,opp);
             else
                 targetOpp(self, opp);
@@ -487,16 +486,16 @@ void defend(const GameState s, OwnPod& self, int defendee) {
 
 // calculates an angle of self to the focused check, then the angle of opp position
 // to the same check. Returns first opp that can be targeted on the way to check.
-Maybe<const OppPod> isInChkFocus(const GameState& s, OwnPod& self) {
+const OppPod* isInChkFocus(const GameState& s, OwnPod& self) {
     int hyp = sqrt(self.chkDist*self.chkDist + carRadius*carRadius);
     Degree halfChkAngle = angleC(self.chkDist, hyp, carRadius);
     for (const OppPod& opp : s.opp) {
         int selfToOpp = distance(self.pos, opp.pos),
             oppToChk = distance(opp.pos, s.chks[self.chkId].first);
         if (angleC(self.chkDist, selfToOpp, oppToChk) <= halfChkAngle) //left or right — doesn't matter
-            return {opp};
+            return &opp;
     }
-    return {};
+    return 0;
 }
 
 #ifndef TESTS
@@ -566,15 +565,15 @@ int main() {
                 defend(s, self, defendee);
                 continue;
             }
-            Maybe<OppPod> opp = canShieldOpponent(s, self, -1);
-            if (opp.Just && rounds >= 5) {
-                shieldOpp(self, opp.val);
+            const OppPod* opp = canShieldOpponent(s, self, -1);
+            if (opp && rounds >= 5) {
+                shieldOpp(self, *opp);
                 continue;
             }
 
             opp = canHitOpponent(s, self);
-            if (opp.Just && rounds >= 5)
-                targetOpp(self, opp.val);
+            if (opp && rounds >= 5)
+                targetOpp(self, *opp);
             else
                 targetChk(s, self, -1);
         }
