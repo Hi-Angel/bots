@@ -539,9 +539,9 @@ int main() {
         }
 
         for (OwnPod& self : s.self) {
-            if (self.hasBoost && (self.chkAngle.val >= -1
-                                  && self.chkAngle.val <= 1
-                                  && !self.attacking)) {
+            if (self.hasBoost && (self.chkAngle.val <= abs(2)
+                                  && !self.attacking
+                                  && self.chkDist >= 3000)) {
                 pair<Point,int> farthest = s.chks[0];
                 for (uint i = 1; i < s.chks.size(); ++i)
                     if (farthest.second < s.chks[i].second)
