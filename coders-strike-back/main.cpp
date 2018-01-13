@@ -252,6 +252,10 @@ inline bool sameFocusedDirection(const Degree& selfAngle, const Degree& oppAngle
 const Maybe<OppPod> canHitOpponent(const GameState& s, const OwnPod& self) {
     for (uint i=0; i < s.opp.size(); ++i) {
         const OppPod& opp = s.opp[i];
+        // if we target same check and I'm closer, ignoring opp is more profitable
+        if (self.chkId == opp.chkId
+            && self.chkDist < distance(opp.pos, s.chks[opp.chkId].first))
+            return {false, {}};
         if (isDotInCircle(s.chks[self.chkId].first, chkPointRadius, opp.pos)
             && self.oppDist[i] <= carRadius*4)
             return {true, opp};
@@ -269,6 +273,10 @@ const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self,
                                       const int mbopp) {
     if (mbopp != -1) {
         const OppPod& opp = s.opp[mbopp];
+        // if we target same check and I'm closer, ignoring opp is more profitable
+        if (self.chkId == opp.chkId
+            && self.chkDist < distance(opp.pos, s.chks[opp.chkId].first))
+            return {false, {}};
         if (doCarsCollide(opp, self) && self.speedRelToOpp[mbopp] >= 140) {
             if (!sameFocusedDirection(self.globAngle, opp.globAngle))
                 return {true, opp};
@@ -278,6 +286,11 @@ const Maybe<OppPod> canShieldOpponent(const GameState& s, const OwnPod& self,
     } else {
         for (uint i=0; i < s.opp.size(); ++i) {
             const OppPod& opp = s.opp[i];
+
+            // if we target same check and I'm closer, ignoring opp is more profitable
+            if (self.chkId == opp.chkId
+                && self.chkDist < distance(opp.pos, s.chks[opp.chkId].first))
+                return {false, {}};
 
             if (doCarsCollide(opp, self) && self.speedRelToOpp[i] >= 140) {
                 if (!sameFocusedDirection(self.globAngle, opp.globAngle)) {
@@ -449,6 +462,8 @@ void defend(const GameState s, OwnPod& self, int defendee) {
         const OppPod& opp = s.opp[i];
         // if (intersectsCircle(s.chks[defendee].first, chkPointRadius,
         //                      opp.moveAngle, opp.pos)) {
+        // todo: canShieldOpponent now checks if you're closer to your next
+        // checkpoint, not gonna work here.
         Maybe<OppPod> maybe = canShieldOpponent(s, self, i);
         if (opp.chkId == defendee) {
             if (maybe.Just)
