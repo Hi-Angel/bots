@@ -557,7 +557,7 @@ int main() {
         }
 
         for (OwnPod& self : s.self) {
-            if (self.hasBoost && (abs(self.chkAngle.val) <= 2
+            if (self.hasBoost && (abs(self.chkAngle.val) <= 3
                                   && !self.attacking
                                   && self.chkDist >= 3000 // don't use too close
                                   )) {
