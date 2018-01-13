@@ -488,12 +488,12 @@ void defend(const GameState s, OwnPod& self, int defendee) {
 
 // calculates an angle of self to the focused check, then the angle of opp position
 // to the same check. Returns first opp that can be targeted on the way to check.
-const OppPod* isInChkFocus(const GameState& s, OwnPod& self) {
+const OppPod* willBeInChkFocus(const GameState& s, OwnPod& self) {
     int hyp = sqrt(self.chkDist*self.chkDist + carRadius*carRadius);
     Degree halfChkAngle = angleC(self.chkDist, hyp, carRadius);
     for (const OppPod& opp : s.opp) {
-        int selfToOpp = distance(self.pos, opp.pos),
-            oppToChk = distance(opp.pos, s.chks[self.chkId].first);
+        int selfToOpp = distance(self.pos, opp.oughtPos),
+            oppToChk = distance(opp.oughtPos, s.chks[self.chkId].first);
         if (angleC(self.chkDist, selfToOpp, oppToChk) <= halfChkAngle) //left or right — doesn't matter
             return &opp;
     }
@@ -567,16 +567,17 @@ int main() {
                 defend(s, self, defendee);
                 continue;
             }
-            const OppPod* opp = canShieldOpponent(s, self, -1);
-            if (opp && rounds >= 5) {
+            const OppPod* opp = 0;
+            if ((opp = canShieldOpponent(s, self, -1)) && rounds >= 5) {
                 shieldOpp(self, *opp);
                 continue;
-            }
-
-            opp = canHitOpponent(s, self);
-            if (opp && rounds >= 5)
+            } else if ((opp = canHitOpponent(s, self)) && rounds >= 5) {
                 targetOpp(self, *opp);
-            else
+                continue;
+            } else if ((opp = willBeInChkFocus(s, self)) && rounds >= 5) {
+                targetOpp(self, *opp);
+                continue;
+            } else
                 targetChk(s, self, -1);
         }
 
