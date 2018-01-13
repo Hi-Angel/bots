@@ -164,6 +164,8 @@ void test_chkAngle() {
 void test_angleC() {
     float a = 1, b = 1.41, c = 2.24;
     DO_TEST(angleC(a, b, c).val == 136);
+    a = 6399, b = 1526, c = 7926;
+    DO_TEST(angleC(a, b, c).val == 180);
 }
 
 int main() {

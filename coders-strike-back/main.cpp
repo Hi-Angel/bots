@@ -181,8 +181,10 @@ Degree angleC(float a, float b, float c) {
     if (!(a && b && c)) // there's no angle, and calculations don't handle it
         return {0};
     float cos_c = (a*a + b*b - c*c) / (float)(2*a*b);
-    if (cos_c > 1) // calculations sometimes fail, idk why.
+    if (cos_c > 1) // a rounding error, can't be cos>1
         return {0};
+    else if (cos_c < -1) // a rounding error, can't be cos<-1
+        return {180};
     else
         return radToDeg(acosf(cos_c));
 }
