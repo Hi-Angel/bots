@@ -48,6 +48,12 @@ struct NumWrapper {
     bool operator==(const T rhs) const {
         return {val == rhs};
     }
+    bool operator<=(const NumWrapper rhs) const {
+        return {val <= rhs.val};
+    }
+    bool operator<=(const T rhs) const {
+        return {val <= rhs};
+    }
 };
 using Degree = NumWrapper<int>;
 using Radian = NumWrapper<float>;
@@ -78,6 +84,9 @@ struct Point {
 
 template <typename T>
 struct Maybe {
+    Maybe()    : Just(false), val() {}
+    Maybe(T v) : Just(true), val(v) {}
+    Maybe(bool v1, T v2) : Just(v1), val(v2) {}
     bool Just;
     T val;
 };
@@ -474,6 +483,20 @@ void defend(const GameState s, OwnPod& self, int defendee) {
         }
     }
     targetChk(s, self, defendee);
+}
+
+// calculates an angle of self to the focused check, then the angle of opp position
+// to the same check. Returns first opp that can be targeted on the way to check.
+Maybe<const OppPod> isInChkFocus(const GameState& s, OwnPod& self) {
+    int hyp = sqrt(self.chkDist*self.chkDist + carRadius*carRadius);
+    Degree halfChkAngle = angleC(self.chkDist, hyp, carRadius);
+    for (const OppPod& opp : s.opp) {
+        int selfToOpp = distance(self.pos, opp.pos),
+            oppToChk = distance(opp.pos, s.chks[self.chkId].first);
+        if (angleC(self.chkDist, selfToOpp, oppToChk) <= halfChkAngle) //left or right — doesn't matter
+            return {opp};
+    }
+    return {};
 }
 
 #ifndef TESTS

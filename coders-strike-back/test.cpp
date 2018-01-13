@@ -25,12 +25,14 @@ void test_vectorAngle() {
 void test_canShieldOpponent() {
     // test1, trivial
     GameState s;
+    s.chks.push_back({{0,0}, 0});
     int opp_i               = 0;
     s.opp[opp_i].pos        = {1000, 1000};
     s.opp[opp_i].speedEstim = 400;
     s.opp[opp_i].globAngle  = 225;
     OwnPod self;
     self.pos              = {0, 0};
+    self.chkDist          = 100000; // arbitrarily big number
     self.speedRelToOpp[0] = 500;
     self.globAngle        = 45;
     self.speedEstim       = 400;
