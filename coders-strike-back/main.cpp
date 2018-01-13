@@ -372,7 +372,10 @@ void shieldOpp(OwnPod& self, const OppPod& opp) {
 }
 
 void targetOpp(OwnPod& self, const OppPod& opp) {
-    self.target = opp.oughtPos;
+    // todo: the oughtFaceEdge might be a bit off, and we can predict better since we
+    // know exactly amount of angle allowed to turn to per a turn.
+    Point oughtFaceEdge   = opp.oughtPos + movePoint(carRadius, degToRad(opp.globAngle));
+    self.target = oughtFaceEdge;
     self.speed = " 100";
     self.currAcc = 100;
     self.attacking = true;
@@ -539,9 +542,10 @@ int main() {
         }
 
         for (OwnPod& self : s.self) {
-            if (self.hasBoost && (self.chkAngle.val <= abs(2)
+            if (self.hasBoost && (abs(self.chkAngle.val) <= 2
                                   && !self.attacking
-                                  && self.chkDist >= 3000)) {
+                                  && self.chkDist >= 3000 // don't use too close
+                                  )) {
                 pair<Point,int> farthest = s.chks[0];
                 for (uint i = 1; i < s.chks.size(); ++i)
                     if (farthest.second < s.chks[i].second)
