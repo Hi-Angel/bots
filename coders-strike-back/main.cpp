@@ -488,7 +488,7 @@ void defend(const GameState s, OwnPod& self, int defendee) {
 
 // calculates an angle of self to the focused check, then the angle of opp position
 // to the same check. Returns first opp that can be targeted on the way to check.
-const OppPod* willBeInChkFocus(const GameState& s, OwnPod& self) {
+const OppPod* willBeOppInChkFocus(const GameState& s, OwnPod& self) {
     int hyp = sqrt(self.chkDist*self.chkDist + carRadius*carRadius);
     Degree halfChkAngle = angleC(self.chkDist, hyp, carRadius);
     for (const OppPod& opp : s.opp) {
@@ -574,7 +574,7 @@ int main() {
             } else if ((opp = canHitOpponent(s, self)) && rounds >= 5) {
                 targetOpp(self, *opp);
                 continue;
-            } else if ((opp = willBeInChkFocus(s, self)) && rounds >= 5) {
+            } else if ((opp = willBeOppInChkFocus(s, self)) && rounds >= 5) {
                 targetOpp(self, *opp);
                 continue;
             } else
@@ -582,9 +582,12 @@ int main() {
         }
 
         for (OwnPod& self : s.self) {
+            const OppPod* opp = willBeOppInChkFocus(s, self);
+            bool oppGetsBoosted = (opp && distance(opp->oughtPos, s.chks[self.chkId].first) > 2000);
             if (self.hasBoost && (abs(self.chkAngle.val) <= 3
                                   && !self.attacking
                                   && self.chkDist >= 3000 // don't use too close
+                                  && !oppGetsBoosted // don't boost the opponent :P
                                   )) {
                 pair<Point,int> farthest = s.chks[0];
                 for (uint i = 1; i < s.chks.size(); ++i)
