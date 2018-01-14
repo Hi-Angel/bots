@@ -260,13 +260,21 @@ inline bool sameFocusedDirection(const Degree& selfAngle, const Degree& oppAngle
     return abs((selfAngle - oppAngle).val) <= 29;
 }
 
+bool oppBetterThanChk(const vector<pair<Point,int>>& chks, const OwnPod& self,
+                               const array<OppPod, numPlayers>& opps) {
+    for (uint i=0; i < opps.size(); ++i) {
+        const OppPod& opp = opps[i];
+        // if we target same check and I'm closer, ignoring opp is more profitable
+        if (!(self.chkId == opp.chkId
+              && self.chkDist < distance(opp.oughtPos, chks[opp.chkId].first)))
+            return true;
+    }
+    return false;
+}
+
 const OppPod* canHitOpponent(const GameState& s, const OwnPod& self) {
     for (uint i=0; i < s.opp.size(); ++i) {
         const OppPod& opp = s.opp[i];
-        // if we target same check and I'm closer, ignoring opp is more profitable
-        if (self.chkId == opp.chkId
-            && self.chkDist < distance(opp.pos, s.chks[opp.chkId].first))
-            return 0;
         if (isDotInCircle(s.chks[self.chkId].first, chkPointRadius, opp.pos)
             && self.oppDist[i] <= carRadius*4)
             return &opp;
@@ -281,13 +289,9 @@ const OppPod* canHitOpponent(const GameState& s, const OwnPod& self) {
 }
 
 const OppPod* canShieldOpponent(const GameState& s, const OwnPod& self,
-                                      const int mbopp) {
+                                const int mbopp) {
     if (mbopp != -1) {
         const OppPod& opp = s.opp[mbopp];
-        // if we target same check and I'm closer, ignoring opp is more profitable
-        if (self.chkId == opp.chkId
-            && self.chkDist < distance(opp.pos, s.chks[opp.chkId].first))
-            return 0;
         if (doCarsCollide(opp, self) && self.speedRelToOpp[mbopp] >= 140) {
             if (!sameFocusedDirection(self.globAngle, opp.globAngle))
                 return &opp;
@@ -297,11 +301,6 @@ const OppPod* canShieldOpponent(const GameState& s, const OwnPod& self,
     } else {
         for (uint i=0; i < s.opp.size(); ++i) {
             const OppPod& opp = s.opp[i];
-
-            // if we target same check and I'm closer, ignoring opp is more profitable
-            if (self.chkId == opp.chkId
-                && self.chkDist < distance(opp.pos, s.chks[opp.chkId].first))
-                return 0;
 
             if (doCarsCollide(opp, self) && self.speedRelToOpp[i] >= 140) {
                 if (!sameFocusedDirection(self.globAngle, opp.globAngle)) {
@@ -473,8 +472,6 @@ void defend(const GameState s, OwnPod& self, int defendee) {
         const OppPod& opp = s.opp[i];
         // if (intersectsCircle(s.chks[defendee].first, chkPointRadius,
         //                      opp.moveAngle, opp.pos)) {
-        // todo: canShieldOpponent now checks if you're closer to your next
-        // checkpoint, not gonna work here.
         if (opp.chkId == defendee) {
             if (canShieldOpponent(s, self, i))
                 shieldOpp(self,opp);
@@ -591,16 +588,19 @@ int main() {
                 defend(s, self, defendee);
                 continue;
             }
-            const OppPod* opp = 0;
-            if ((opp = canShieldOpponent(s, self, -1)) && rounds >= 5) {
-                shieldOpp(self, *opp);
-                continue;
-            } else if ((opp = canHitOpponent(s, self)) && rounds >= 5) {
-                targetOpp(self, *opp);
-                continue;
-            } else if ((opp = willBeOppInChkFocus(s, self)) && rounds >= 5) {
-                targetOpp(self, *opp);
-                continue;
+            if (oppBetterThanChk(s.chks, self, s.opp) && rounds >= 5) {
+                const OppPod* opp = 0;
+                if ((opp = canShieldOpponent(s, self, -1))) {
+                    shieldOpp(self, *opp);
+                    continue;
+                } else if ((opp = canHitOpponent(s, self))) {
+                    targetOpp(self, *opp);
+                    continue;
+                } else if ((opp = willBeOppInChkFocus(s, self))) {
+                    targetOpp(self, *opp);
+                    continue;
+                } else
+                    targetChk(s, self, -1);
             } else
                 targetChk(s, self, -1);
         }
