@@ -489,8 +489,8 @@ void defend(const GameState s, OwnPod& self, int defendee) {
 // calculates an angle of self to the focused check, then the angle of opp position
 // to the same check. Returns first opp that can be targeted on the way to check.
 const OppPod* willBeOppInChkFocus(const GameState& s, OwnPod& self) {
-    int hyp = sqrt(self.chkDist*self.chkDist + carRadius*carRadius);
-    Degree halfChkAngle = angleC(self.chkDist, hyp, carRadius);
+    int hyp = sqrt(self.chkDist*self.chkDist + chkPointRadius*chkPointRadius);
+    Degree halfChkAngle = angleC(self.chkDist, hyp, chkPointRadius);
     for (const OppPod& opp : s.opp) {
         int selfToOpp = distance(self.pos, opp.oughtPos),
             oppToChk = distance(opp.oughtPos, s.chks[self.chkId].first);
