@@ -326,6 +326,11 @@ Degree inertiaAngle(const Point& chkPoint, const OwnPod& self, const Point& targ
     Degree inertia = angleC(distance(target, self.pos), // s.speed,
                             distance(target, self.prevPos),
                             distance(self.prevPos, self.pos));
+    if (abs(inertia.val) > 90) {
+        // from POV of this angle the only moment inertia can legitimately be higher
+        // is in intimate closeness to the target
+        cerr << "WRN: odd inertia, it's " << inertia.val << endl;
+    }
     return (isLeftToLine(chkPoint, self.prevPos, self.pos))? -inertia : inertia;
 }
 
@@ -417,9 +422,10 @@ Degree chkAngle(const Point& chk, const OwnPod& self) {
     // dubious — I could as well use movement direction for the bisectSpeed()
     Point faceEdge   = self.pos + movePoint(carRadius, degToRad(self.globAngle));
     float hyp        = distance(faceEdge, chk);
+    int dist = distance(self.pos, chk);
     return isLeftToLine(self.pos, chk, faceEdge)
-        ? -angleC(self.chkDist, carRadius, hyp)
-        : angleC(self.chkDist, carRadius, hyp);
+        ? -angleC(dist, carRadius, hyp)
+        : angleC(dist, carRadius, hyp);
 }
 
 void targetChk(const GameState& s, OwnPod& self, int chkId) {
@@ -464,7 +470,7 @@ Degree vectorAngle(const Point& vec) {
 }
 
 int findDefendee() {
-    return 1; // todo
+    return 2; // todo
 }
 
 void defend(const GameState s, OwnPod& self, int defendee) {
@@ -481,6 +487,10 @@ void defend(const GameState s, OwnPod& self, int defendee) {
         }
     }
     targetChk(s, self, defendee);
+    if (distance(s.chks[defendee].first, self.pos) <= chkPointRadius) {
+        self.speed = " 0";
+        self.currAcc = 0;
+    }
 }
 
 // calculates an angle of self to the focused check, then the angle of opp position
@@ -527,7 +537,7 @@ int main() {
     GameState s;
     unsigned short rounds = 0,
         laps, checkAmount,
-        defender = 2; // disabled
+        defender = 1;
     cin >> laps >> checkAmount;
     for (uint i = 0; i < checkAmount; ++i) {
         Point aChk;

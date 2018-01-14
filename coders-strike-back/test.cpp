@@ -166,6 +166,10 @@ void test_angleC() {
     DO_TEST(angleC(a, b, c).val == 136);
     a = 6399, b = 1526, c = 7926;
     DO_TEST(angleC(a, b, c).val == 180);
+    a = distance({3302, 7230}, {6798, 5725}),
+        b = distance({3302, 7230}, {7090, 5600}),
+        c = distance({6798, 5725}, {7090, 5600});
+    DO_TEST(angleC(a, b, c).val == 0);
 }
 
 int main() {
