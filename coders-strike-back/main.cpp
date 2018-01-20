@@ -513,20 +513,24 @@ void defend(const GameState s, OwnPod& self, int defendee) {
     }
 }
 
+bool pointInChkFocus(const Point& chk, int chkDist, const Point& focOrigin,
+                     const Point& p) {
+    int hyp = sqrt(chkDist*chkDist + chkPointRadius*chkPointRadius);
+    Degree halfChkAngle = angleC(chkDist, hyp, chkPointRadius);
+    int selfToOpp = distance(focOrigin, p),
+        oppToChk = distance(p, chk);
+    return angleC(chkDist, selfToOpp, oppToChk) <= halfChkAngle; //left or right — doesn't matter
+}
+
 // calculates an angle of self to the focused check, then the angle of opp position
 // to the same check. Returns first opp that can be targeted on the way to check.
 const OppPod* willBeOppInChkFocus(const GameState& s, OwnPod& self) {
     // todo: the code assumes self and opp are "points", whereas they're big
     // circles. Below is a code I started working on to make this happen, but I kind
     // of lost interest on half way.
-    int hyp = sqrt(self.chkDist*self.chkDist + chkPointRadius*chkPointRadius);
-    Degree halfChkAngle = angleC(self.chkDist, hyp, chkPointRadius);
-    for (const OppPod& opp : s.opp) {
-        int selfToOpp = distance(self.pos, opp.oughtPos),
-            oppToChk = distance(opp.oughtPos, s.chks[self.chkId].first);
-        if (angleC(self.chkDist, selfToOpp, oppToChk) <= halfChkAngle) //left or right — doesn't matter
+    for (const OppPod& opp : s.opp)
+        if (pointInChkFocus(s.chks[self.chkId].first, self.chkDist, self.pos, opp.oughtPos))
             return &opp;
-    }
     return 0;
 }
 
