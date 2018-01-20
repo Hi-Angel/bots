@@ -288,6 +288,24 @@ const OppPod* canHitOpponent(const GameState& s, const OwnPod& self) {
     return 0;
 }
 
+// if an ally drives straight into us, enable shield to cancel out inertia. In fact,
+// it's a nice cooperation, worth forcing allies to do it on purpose
+uint shieldAgainstAlly(const GameState& s, const uint selfi) {
+    const OwnPod& self = s.self[selfi];
+    for (uint i=0; i < s.self.size(); ++i) {
+        if (i == selfi)
+            continue;
+        int prevDist = distance(s.self[i].prevPos, self.prevPos),
+            currDist = distance(s.self[i].pos, self.pos),
+            relSpeed = prevDist - currDist;
+        if (doCarsCollide(self, s.self[i])
+            && relSpeed >= 250 && s.self[i].speedEstim >= 250) {
+            return i;
+        }
+    }
+    return s.self.size();
+}
+
 const OppPod* canShieldOpponent(const GameState& s, const OwnPod& self,
                                 const int mbopp) {
     if (mbopp != -1) {
@@ -392,8 +410,10 @@ Point shiftByRad(const Point& origin, const Point& edge, Radian shiftRad) {
     p += origin;
     return p;
 }
-void shieldOpp(OwnPod& self, const OppPod& opp) {
-    self.target = opp.pos;
+
+template <typename Car>
+void shieldIntoCar(OwnPod& self, const Car& car) {
+    self.target = car.pos;
     self.speed = " SHIELD";
     self.currAcc = 0;
     self.attacking = true;
@@ -480,7 +500,7 @@ void defend(const GameState s, OwnPod& self, int defendee) {
         //                      opp.moveAngle, opp.pos)) {
         if (opp.chkId == defendee) {
             if (canShieldOpponent(s, self, i))
-                shieldOpp(self,opp);
+                shieldIntoCar(self,opp);
             else
                 targetOpp(self, opp);
             return;
@@ -537,7 +557,7 @@ int main() {
     GameState s;
     unsigned short rounds = 0,
         laps, checkAmount,
-        defender = 1;
+        defender = 2; // disabled
     cin >> laps >> checkAmount;
     for (uint i = 0; i < checkAmount; ++i) {
         Point aChk;
@@ -598,10 +618,13 @@ int main() {
                 defend(s, self, defendee);
                 continue;
             }
-            if (oppBetterThanChk(s.chks, self, s.opp) && rounds >= 5) {
+            uint ally = shieldAgainstAlly(s, i);
+            if (ally != s.self.size())
+                shieldIntoCar(self, s.self[ally]);
+            else if (oppBetterThanChk(s.chks, self, s.opp) && rounds >= 5) {
                 const OppPod* opp = 0;
                 if ((opp = canShieldOpponent(s, self, -1))) {
-                    shieldOpp(self, *opp);
+                    shieldIntoCar(self, *opp);
                     continue;
                 } else if ((opp = canHitOpponent(s, self))) {
                     targetOpp(self, *opp);
