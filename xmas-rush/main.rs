@@ -10,15 +10,48 @@ fn read_line() -> String {
     line
 }
 
+struct FreePaths {
+    up: bool,
+    down: bool,
+    left: bool,
+    right: bool,
+}
+
+struct PlayerInfo {
+    n_quests: u32,
+    x: u32,
+    y: u32,
+    tile: FreePaths
+}
+
+struct Players {
+    me: PlayerInfo,
+    opp: PlayerInfo,
+}
+
+fn read_matrix() -> Vec<Vec<FreePaths>> {
+    let mut ret = Vec::<Vec<FreePaths>>::new();
+    for _ in 0..7 {
+        let mut row = Vec::<FreePaths>::new();
+        for tile_raw in read_line().split_whitespace() {
+            assert_eq!(tile_raw.len(), 4);
+            let tile = tile_raw.as_bytes();
+            row.push(FreePaths {up:    tile[0] == b'1',
+                                down:  tile[1] == b'1',
+                                left:  tile[2] == b'1',
+                                right: tile[3] == b'1',
+                                });
+        }
+        ret.push(row);
+    }
+    ret
+}
+
 fn main() {
     // game loop
     loop {
-        let turn_type = parse_input!(read_line(), i32);
-        for _ in 0..7 as usize {
-            let inputs = read_line();
-            for tile in inputs.split_whitespace() {
-            }
-        }
+        let _turn_type = parse_input!(read_line(), i32);
+        let _game_map = read_matrix();
         for _ in 0..2 as usize {
             let input_line = read_line();
             let inputs = input_line.split(" ").collect::<Vec<_>>();
