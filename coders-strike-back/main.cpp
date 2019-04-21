@@ -288,6 +288,26 @@ const OppPod* canHitOpponent(const GameState& s, const OwnPod& self) {
     return 0;
 }
 
+bool pointInChkFocus(const Point& chk, int chkDist, const Point& focOrigin,
+                     const Point& p) {
+    int hyp = sqrt(chkDist*chkDist + chkPointRadius*chkPointRadius);
+    Degree halfChkAngle = angleC(chkDist, hyp, chkPointRadius);
+    int selfToOpp = distance(focOrigin, p),
+        oppToChk = distance(p, chk);
+    return angleC(chkDist, selfToOpp, oppToChk) <= halfChkAngle; //left or right — doesn't matter
+}
+
+// returns self.target if there's no need in going around, or point left or right to
+// an ally which is in the way.
+const Point goAroundAlly(const GameState& s, const OwnPod& self) {
+    // uses self.target to calculate if an ally is in the way
+    for (const OwnPod& ally : s.self)
+        if (pointInChkFocus(s.chks[self.chkId].first, self.chkDist, self.pos, ally.pos)) {
+            const Point lefEdge = ally.pos + movePoint(carRadius, ),
+            // check direction ally is moving
+        }
+}
+
 // if an ally drives straight into us, enable shield to cancel out inertia. In fact,
 // it's a nice cooperation, worth forcing allies to do it on purpose
 uint shieldAgainstAlly(const GameState& s, const uint selfi) {
@@ -511,15 +531,6 @@ void defend(const GameState s, OwnPod& self, int defendee) {
         self.speed = " 0";
         self.currAcc = 0;
     }
-}
-
-bool pointInChkFocus(const Point& chk, int chkDist, const Point& focOrigin,
-                     const Point& p) {
-    int hyp = sqrt(chkDist*chkDist + chkPointRadius*chkPointRadius);
-    Degree halfChkAngle = angleC(chkDist, hyp, chkPointRadius);
-    int selfToOpp = distance(focOrigin, p),
-        oppToChk = distance(p, chk);
-    return angleC(chkDist, selfToOpp, oppToChk) <= halfChkAngle; //left or right — doesn't matter
 }
 
 // calculates an angle of self to the focused check, then the angle of opp position
