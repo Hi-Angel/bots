@@ -17,16 +17,29 @@ struct FreePaths {
     right: bool,
 }
 
-struct PlayerInfo {
+impl FreePaths {
+    fn new(tile_raw: &str) -> FreePaths {
+        let tile = tile_raw.as_bytes();
+        FreePaths { up:    tile[0] == b'1',
+                    down:  tile[1] == b'1',
+                    left:  tile[2] == b'1',
+                    right: tile[3] == b'1' }
+    }
+}
+
+struct PlayerState {
     n_quests: u32,
     x: u32,
     y: u32,
-    tile: FreePaths
+    tile: FreePaths,
+    id: u32
 }
 
-struct Players {
-    me: PlayerInfo,
-    opp: PlayerInfo,
+struct ItemState {
+    name: String,
+    x: u32,
+    y: u32,
+    owner_id: u32, // id of a player who can collect the item
 }
 
 fn read_matrix() -> Vec<Vec<FreePaths>> {
@@ -35,16 +48,20 @@ fn read_matrix() -> Vec<Vec<FreePaths>> {
         let mut row = Vec::<FreePaths>::new();
         for tile_raw in read_line().split_whitespace() {
             assert_eq!(tile_raw.len(), 4);
-            let tile = tile_raw.as_bytes();
-            row.push(FreePaths {up:    tile[0] == b'1',
-                                down:  tile[1] == b'1',
-                                left:  tile[2] == b'1',
-                                right: tile[3] == b'1',
-                                });
+            row.push(FreePaths::new(tile_raw));
         }
         ret.push(row);
     }
     ret
+}
+
+fn read_player_info(id: u32) -> PlayerState {
+    let line = read_line();
+    let mut player_str = line.split_whitespace();
+    PlayerState { n_quests: parse_input!(player_str.next().unwrap(), u32),
+                  x:  parse_input!(player_str.next().unwrap(), u32),
+                  y:  parse_input!(player_str.next().unwrap(), u32),
+                  tile:  FreePaths::new(player_str.next().unwrap()) }
 }
 
 fn main() {
@@ -52,16 +69,9 @@ fn main() {
     loop {
         let _turn_type = parse_input!(read_line(), i32);
         let _game_map = read_matrix();
-        for _ in 0..2 as usize {
-            let input_line = read_line();
-            let inputs = input_line.split(" ").collect::<Vec<_>>();
-            let num_player_cards = parse_input!(inputs[0], i32); // the total number of quests for a player (hidden and revealed)
-            let player_x = parse_input!(inputs[1], i32);
-            let player_y = parse_input!(inputs[2], i32);
-            let player_tile = inputs[3].trim().to_string();
-        }
-        let input_line = read_line();
-        let num_items = parse_input!(input_line, i32); // the total number of items available on board and on player tiles
+        let _me =  read_player_info(0);
+        let _opp = read_player_info(1);
+        let num_items = parse_input!(read_line(), u32);
         for _ in 0..num_items as usize {
             let input_line = read_line();
             let inputs = input_line.split(" ").collect::<Vec<_>>();
