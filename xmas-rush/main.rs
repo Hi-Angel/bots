@@ -13,11 +13,9 @@ fn read_line() -> String {
 fn main() {
     // game loop
     loop {
-        let input_line = read_line();
-        let turn_type = parse_input!(input_line, i32);
+        let turn_type = parse_input!(read_line(), i32);
         for _ in 0..7 as usize {
-            let mut inputs = String::new();
-            io::stdin().read_line(&mut inputs).unwrap();
+            let inputs = read_line();
             for tile in inputs.split_whitespace() {
             }
         }
