@@ -1,4 +1,5 @@
 use std::io::{self, BufRead};
+use std::collections::HashMap;
 
 macro_rules! parse_input {
     ($x:expr, $t:ident) => ($x.trim().parse::<$t>().unwrap())
@@ -27,19 +28,36 @@ impl FreePaths {
     }
 }
 
-struct PlayerState {
-    n_quests: u32,
+struct Point {
     x: u32,
     y: u32,
+}
+
+struct PlayerState {
+    n_quests: u32,
+    pos: Point,
     tile: FreePaths,
-    id: u32
+}
+
+enum ItemLocation {
+    AtMine,
+    AtOpponents,
+    At(Point)
 }
 
 struct ItemState {
-    name: String,
-    x: u32,
-    y: u32,
+    pos: ItemLocation,
     owner_id: u32, // id of a player who can collect the item
+}
+
+impl ItemState {
+    fn new(maybe_x: i32, maybe_y: i32, owner_id: u32) -> ItemState {
+        ItemState{ pos: match maybe_x { -2 => ItemLocation::AtOpponents,
+                                         -1 => ItemLocation::AtMine,
+                                         _ => ItemLocation::At (Point { x: maybe_x as u32,
+                                                                        y: maybe_y as u32 })},
+                   owner_id: owner_id}
+    }
 }
 
 fn read_matrix() -> Vec<Vec<FreePaths>> {
@@ -55,13 +73,27 @@ fn read_matrix() -> Vec<Vec<FreePaths>> {
     ret
 }
 
-fn read_player_info(id: u32) -> PlayerState {
+fn read_player_state() -> PlayerState {
     let line = read_line();
     let mut player_str = line.split_whitespace();
     PlayerState { n_quests: parse_input!(player_str.next().unwrap(), u32),
-                  x:  parse_input!(player_str.next().unwrap(), u32),
-                  y:  parse_input!(player_str.next().unwrap(), u32),
+                  pos: Point{ x: parse_input!(player_str.next().unwrap(), u32),
+                              y: parse_input!(player_str.next().unwrap(), u32) },
                   tile:  FreePaths::new(player_str.next().unwrap()) }
+}
+
+fn read_items_state(n_items: u32) -> HashMap<String,ItemState> {
+    let mut items = HashMap::<String,ItemState>::new();
+    for _ in 0..n_items {
+        let line = read_line();
+        let mut item_str = line.split_whitespace();
+        let item_name = item_str.next().unwrap();
+        let maybe_x = parse_input!(item_str.next().unwrap(), i32);
+        let maybe_y = parse_input!(item_str.next().unwrap(), i32);
+        let owner_id = parse_input!(item_str.next().unwrap(), u32);
+        items.insert(item_name.to_string(), ItemState::new(maybe_x, maybe_y, owner_id));
+    }
+    items
 }
 
 fn main() {
@@ -69,17 +101,11 @@ fn main() {
     loop {
         let _turn_type = parse_input!(read_line(), i32);
         let _game_map = read_matrix();
-        let _me =  read_player_info(0);
-        let _opp = read_player_info(1);
+        let _me =  read_player_state();
+        let _opp = read_player_state();
+        // todo: put players to a vector to get their ids
         let num_items = parse_input!(read_line(), u32);
-        for _ in 0..num_items as usize {
-            let input_line = read_line();
-            let inputs = input_line.split(" ").collect::<Vec<_>>();
-            let item_name = inputs[0].trim().to_string();
-            let item_x = parse_input!(inputs[1], i32);
-            let item_y = parse_input!(inputs[2], i32);
-            let item_player_id = parse_input!(inputs[3], i32);
-        }
+        let _items: HashMap<String,ItemState> = read_items_state(num_items);
         let input_line = read_line();
         let num_quests = parse_input!(input_line, i32); // the total number of revealed quests for both players
         for _ in 0..num_quests as usize {
