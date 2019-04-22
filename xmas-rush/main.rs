@@ -50,6 +50,11 @@ struct ItemState {
     owner_id: u32, // id of a player who can collect the item
 }
 
+struct Quest {
+    item: String,
+    owner_id: u32
+}
+
 impl ItemState {
     fn new(maybe_x: i32, maybe_y: i32, owner_id: u32) -> ItemState {
         ItemState{ pos: match maybe_x { -2 => ItemLocation::AtOpponents,
@@ -96,6 +101,17 @@ fn read_items_state(n_items: u32) -> HashMap<String,ItemState> {
     items
 }
 
+fn read_quests(n_quests: u32) -> Vec<Quest> {
+    let mut quests = Vec::<Quest>::new();
+    for _ in 0..n_quests {
+        let input_line = read_line();
+        let mut quest_str = input_line.split_whitespace();
+        quests.push(Quest{ item: quest_str.next().unwrap().to_string(),
+                           owner_id: parse_input!(quest_str.next().unwrap(), u32)});
+    }
+    quests
+}
+
 fn main() {
     // game loop
     loop {
@@ -106,14 +122,8 @@ fn main() {
         // todo: put players to a vector to get their ids
         let num_items = parse_input!(read_line(), u32);
         let _items: HashMap<String,ItemState> = read_items_state(num_items);
-        let input_line = read_line();
-        let num_quests = parse_input!(input_line, i32); // the total number of revealed quests for both players
-        for _ in 0..num_quests as usize {
-            let input_line = read_line();
-            let inputs = input_line.split(" ").collect::<Vec<_>>();
-            let quest_item_name = inputs[0].trim().to_string();
-            let quest_player_id = parse_input!(inputs[1], i32);
-        }
+        let num_quests = parse_input!(read_line(), u32);
+        let _quests = read_quests(num_quests);
 
         println!("PUSH 3 RIGHT"); // PUSH <id> <direction> | MOVE <direction> | PASS
     }
